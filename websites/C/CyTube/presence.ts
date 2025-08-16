@@ -1,199 +1,206 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "653639828826750976" // Contact if you want me to edit the discord assets/keys/whatever
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused"
-  });
+  clientId: '653639828826750976', // Contact if you want me to edit the discord assets/keys/whatever
+})
+const strings = presence.getStrings({
+  play: 'general.playing',
+  pause: 'general.paused',
+})
 
-/**
- * Get Timestamps
- * @param {Number} videoTime Current video time seconds
- * @param {Number} videoDuration Video duration seconds
- */
-function getTimestamps(
-  videoTime: number,
-  videoDuration: number
-): Array<number> {
-  const startTime = Date.now(),
-    endTime = Math.floor(startTime / 1000) - videoTime + videoDuration;
-  return [Math.floor(startTime / 1000), endTime];
-}
+function getTimes(time: number): {
+  sec: number
+  min: number
+  hrs: number
+} {
+  let seconds = Math.round(time)
+  let minutes = Math.floor(seconds / 60)
 
-function getTimes(time: number): Record<string, number> {
-  let seconds = Math.round(time),
-    minutes = Math.floor(seconds / 60);
+  seconds -= minutes * 60
 
-  seconds -= minutes * 60;
+  const hours = Math.floor(minutes / 60)
 
-  const hours = Math.floor(minutes / 60);
-
-  minutes -= hours * 60;
+  minutes -= hours * 60
 
   return {
     sec: seconds,
     min: minutes,
-    hrs: hours
-  };
+    hrs: hours,
+  }
 }
 
 function lessTen(digit: number): string {
-  return digit < 10 ? "0" : "";
+  return digit < 10 ? '0' : ''
 }
 
 function getTimestamp(time: number): string {
-  const { sec, min, hrs } = getTimes(time);
+  const { sec, min, hrs } = getTimes(time)
 
   return hrs > 0
-    ? hrs + ":" + lessTen(min) + min + ":" + lessTen(sec) + sec
-    : min + ":" + lessTen(sec) + sec;
+    ? `${hrs}:${lessTen(min)}${min}:${lessTen(sec)}${sec}`
+    : `${min}:${lessTen(sec)}${sec}`
 }
 
 interface Match {
-  display: string;
-  image_key: string;
+  display: string
+  imageKey: string
 }
 
 interface MatchList {
-  [key: string]: Match;
+  [key: string]: Match
+}
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/logo.png',
+  ServiceYT = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/0.png',
+  ServiceGD = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/1.png',
+  ServiceDBX = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/2.png',
+  ServiceAWS = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/3.png',
+  ServiceDC = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/4.png',
+  ServiceGC = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/5.png',
+  ServiceUK = 'https://cdn.rcd.gg/PreMiD/websites/C/CyTube/assets/6.png',
 }
 
 const matches: MatchList = {
-  youtube: { display: "YouTube", image_key: "cytube_service_yt" },
-  googlevideo: { display: "YouTube", image_key: "cytube_service_yt" },
+  'youtube': { display: 'YouTube', imageKey: ActivityAssets.ServiceYT },
+  'googlevideo': { display: 'YouTube', imageKey: ActivityAssets.ServiceYT },
 
-  "docs.google": { display: "Google Drive", image_key: "cytube_service_gd" },
-  googleusercontent: {
-    display: "Google Drive",
-    image_key: "cytube_service_gd"
+  'docs.google': { display: 'Google Drive', imageKey: ActivityAssets.ServiceGD },
+  'googleusercontent': {
+    display: 'Google Drive',
+    imageKey: ActivityAssets.ServiceGD,
   },
 
-  appspot: { display: "Google Cloud", image_key: "cytube_service_gc" },
-  blogspot: { display: "Google Cloud", image_key: "cytube_service_gc" },
+  'appspot': { display: 'Google Cloud', imageKey: ActivityAssets.ServiceGC },
+  'blogspot': { display: 'Google Cloud', imageKey: ActivityAssets.ServiceGC },
 
-  dropbox: { display: "Dropbox", image_key: "cytube_service_dbx" },
+  'dropbox': { display: 'Dropbox', imageKey: ActivityAssets.ServiceDBX },
 
-  amazonaws: { display: "Amazon AWS", image_key: "cytube_service_aws" },
+  'amazonaws': { display: 'Amazon AWS', imageKey: ActivityAssets.ServiceAWS },
 
-  soundcloud: { display: "Soundcloud", image_key: "cytube_service_sc" },
+  'soundcloud': { display: 'Soundcloud', imageKey: Assets.Question }, // asset not found
 
-  discordapp: { display: "Discord", image_key: "cytube_service_dc" },
+  'discordapp': { display: 'Discord', imageKey: ActivityAssets.ServiceDC },
 
-  "vimeo-prod-": { display: "Vimeo", image_key: "cytube_service_ve" }
-};
+  'vimeo-prod-': { display: 'Vimeo', imageKey: Assets.Question }, // asset not found
+}
 
 function service(service: string): Match {
-  let return_match: Match = {
-    display: "Unknown Service",
-    image_key: "cytube_service_uk"
-  };
+  let returnMatch: Match = {
+    display: 'Unknown Service',
+    imageKey: ActivityAssets.ServiceUK,
+  }
 
-  Object.keys(matches).forEach((key) => {
-    service.includes(key) && (return_match = matches[key]);
-  });
+  for (const key of Object.keys(matches))
+    service.includes(key) && (returnMatch = matches[key]!)
 
-  return return_match;
+  return returnMatch
 }
 
-class VideoData {
-  audio = false;
-  paused = true;
-  duration = 0;
-  current_time = 0;
-  site: string = undefined;
+interface VideoData {
+  audio: boolean
+  paused: boolean
+  duration: number
+  currentTime: number
+  site: string
 }
 
-let iframe_response = new VideoData();
+let iFrameResponse: VideoData = {
+  audio: false,
+  paused: true,
+  duration: 0,
+  currentTime: 0,
+  site: '',
+}
 
-presence.on("iFrameData", (data: VideoData) => {
-  iframe_response = data;
-});
+presence.on('iFrameData', (data: unknown) => {
+  iFrameResponse = data as VideoData
+})
 
-presence.on("UpdateData", async () => {
-  const path = document.location.pathname,
-    presenceData: PresenceData = {
-      largeImageKey: "cytube_logo",
-      details: "loading",
-      state: "CyTube"
-    },
-    translate = {
-      pause: (await strings).pause,
-      play: (await strings).play
-    };
+presence.on('UpdateData', async () => {
+  const path = document.location.pathname
+  const presenceData: PresenceData = {
+    largeImageKey: ActivityAssets.Logo,
+    details: 'loading',
+    state: 'CyTube',
+  }
+  const translate = {
+    pause: (await strings).pause,
+    play: (await strings).play,
+  }
 
-  async function set_video(data: VideoData): Promise<any> {
-    const current_service: Match = service(data.site);
+  async function setVideo(data: VideoData) {
+    const currentService: Match = service(data.site)
 
     presenceData.details = `Watching ${document
-      .getElementById("currenttitle")
-      .textContent.replace("Currently Playing:", "")}
-            - ${current_service.display}`;
+      .querySelector('#currenttitle')
+      ?.textContent
+      ?.replace('Currently Playing:', '')}
+            - ${currentService.display}`
 
-    presenceData.largeImageKey = current_service.image_key;
+    presenceData.largeImageKey = currentService.imageKey;
 
-    const timestamps = getTimestamps(
-      Math.floor(data.current_time),
-      Math.floor(data.duration)
-    );
+    [presenceData.startTimestamp, presenceData.endTimestamp] = presence.getTimestamps(
+      Math.floor(data.currentTime),
+      Math.floor(data.duration),
+    )
 
     if (data.paused) {
-      presenceData.startTimestamp = null;
-      presenceData.smallImageKey = "presence_playback_paused";
+      presenceData.startTimestamp = null
+      presenceData.smallImageKey = Assets.Pause
       presenceData.smallImageText = `${translate.pause} - ${getTimestamp(
-        data.current_time
-      )}`;
-    } else {
-      presenceData.startTimestamp = timestamps[0];
-      presenceData.endTimestamp = timestamps[1];
-      presenceData.smallImageKey = "presence_playback_playing";
-      presenceData.smallImageText = translate.play;
+        data.currentTime,
+      )}`
+    }
+    else {
+      presenceData.smallImageKey = Assets.Play
+      presenceData.smallImageText = translate.play
     }
   }
 
-  if (path.includes("/r/")) {
-    const container = !(
-        document.body.className.includes("chatOnly") ||
-        !document.getElementById("videowrap")
-      ),
-      active_content: boolean = iframe_response.site != undefined,
-      room: string = path.split("r/")[1],
-      motd: string = document.getElementById("motd").textContent;
-
-    presenceData.state = `${motd} - /r/${room}`;
-    if (!container) {
-      presenceData.details = "Chatting";
-      presenceData.startTimestamp = Math.floor(Date.now() / 1000);
-    } else {
-      if (!document.getElementById("videowrap").querySelector("video")) {
-        presenceData.details = "Waiting to Start";
-        presenceData.smallImageKey = "presence_playback_waiting";
-        presenceData.smallImageText = "Waiting";
-        presenceData.startTimestamp = Math.floor(Date.now() / 1000);
-
-        if (active_content) set_video(iframe_response);
-      } else {
-        const video = document
-          .getElementById("videowrap")
-          .querySelector("video");
-
-        set_video({
-          audio: false,
-          current_time: video.currentTime,
-          duration: video.duration,
-          paused: video.paused,
-          site: video.src
-        });
-      }
+  if (path.includes('/r/')) {
+    presenceData.state = `${document.querySelector('#motd')?.textContent} - /r/${
+      path.split('r/')[0]
+    }`
+    if (
+      document.body.className.includes('chatOnly')
+      || !document.querySelector('#videowrap')
+    ) {
+      presenceData.details = 'Chatting'
+      presenceData.startTimestamp = Math.floor(Date.now() / 1000)
     }
-  } else if (path == "/") {
-    presenceData.details = "On Homepage";
-    presenceData.startTimestamp = Math.floor(Date.now() / 1000);
-  } else if (path.includes("/account/")) {
-    presenceData.details = "Managing Account";
-    presenceData.startTimestamp = Math.floor(Date.now() / 1000);
-  } else if (path == "/contact") {
-    presenceData.details = "Contacting Support";
-    presenceData.startTimestamp = Math.floor(Date.now() / 1000);
+    else if (!document.querySelector('#videowrap')?.querySelector('video')) {
+      presenceData.details = 'Waiting to Start'
+      presenceData.smallImageKey = Assets.Play
+      presenceData.smallImageText = 'Waiting'
+      presenceData.startTimestamp = Math.floor(Date.now() / 1000)
+
+      if (iFrameResponse?.site)
+        setVideo(iFrameResponse)
+    }
+    else {
+      const video = document.querySelector('#videowrap')!.querySelector('video')!
+
+      setVideo({
+        audio: false,
+        currentTime: video.currentTime,
+        duration: video.duration,
+        paused: video.paused,
+        site: video.src,
+      })
+    }
   }
-  presence.setActivity(presenceData, true);
-});
+  else if (path === '/') {
+    presenceData.details = 'On Homepage'
+    presenceData.startTimestamp = Math.floor(Date.now() / 1000)
+  }
+  else if (path.includes('/account/')) {
+    presenceData.details = 'Managing Account'
+    presenceData.startTimestamp = Math.floor(Date.now() / 1000)
+  }
+  else if (path === '/contact') {
+    presenceData.details = 'Contacting Support'
+    presenceData.startTimestamp = Math.floor(Date.now() / 1000)
+  }
+  presence.setActivity(presenceData, true)
+})

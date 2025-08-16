@@ -1,111 +1,122 @@
 const presence = new Presence({
-  clientId: "671599195462959104"
-});
+  clientId: '671599195462959104',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-const browsingStamp = Math.floor(Date.now() / 1000);
+async function getStrings() {
+  return presence.getStrings({
+    addingCalendar: 'googlecalendar.addingCalendar',
+    addingCalendarByUrl: 'googlecalendar.addingCalendarByUrl',
+    birthdaysSettings: 'googlecalendar.birthdaysSettings',
+    browsingCalendarEmbed: 'googlecalendar.browsingCalendarEmbed',
+    browsingCalendars: 'googlecalendar.browsingCalendars',
+    browsingSchedule: 'googlecalendar.browsingSchedule',
+    browsingTrash: 'googlecalendar.browsingTrash',
+    calendar: 'googlecalendar.calendar',
+    creatingCalendar: 'googlecalendar.creatingCalendar',
+    customDays: 'googlecalendar.customDays',
+    customizingCalendar: 'googlecalendar.customizingCalendar',
+    daySchedule: 'googlecalendar.daySchedule',
+    editingAnEvent: 'googlecalendar.editingAnEvent',
+    exportingCalendar: 'googlecalendar.exportingCalendar',
+    generalSettings: 'googlecalendar.generalSettings',
+    home: 'general.viewHome',
+    inTheSettingsOf: 'googlecalendar.inTheSettingsOf',
+    monthSchedule: 'googlecalendar.monthSchedule',
+    searchingEvent: 'googlecalendar.searchingEvent',
+    viewingCalendar: 'googlecalendar.viewingCalendar',
+    viewingScheduleOf: 'googlecalendar.viewingScheduleOf',
+    weekSchedule: 'googlecalendar.weekSchedule',
+    yearSchedule: 'googlecalendar.yearSchedule',
+  })
+}
 
-presence.on("UpdateData", () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-    largeImageKey: "gcalendar"
-  };
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/G/Google%20Calendar/assets/logo.png',
+    startTimestamp: browsingTimestamp,
+  }
+  const strings = await getStrings()
+  // eslint-disable-next-line regexp/no-unused-capturing-group
+  const date = document.title?.replace(/Google[\xA0 ](Calendar|Agenda) -/, '')?.replaceAll(',', ' -')?.trim()
 
-  presenceData.startTimestamp = browsingStamp;
-
-  if (document.location.pathname == "/") {
-    presenceData.details = "In the Homepage";
-  } else if (document.location.pathname.startsWith("/calendar/")) {
-    if (document.location.pathname.startsWith("/calendar/r/day")) {
-      const dated = document.querySelector("head > title").textContent;
-      presenceData.details = "Viewing the day schedule:";
-      presenceData.state = dated
-        .replace("Google Calendar - ", "")
-        .replace(/,/g, " -");
-    } else if (document.location.pathname.startsWith("/calendar/r/week")) {
-      const datew = document.querySelector("head > title").textContent;
-      presenceData.details = "Viewing the week schedule:";
-      presenceData.state = datew
-        .replace("Google Calendar - ", "")
-        .replace(/,/g, " -");
-    } else if (document.location.pathname.startsWith("/calendar/r/month")) {
-      const datem = document.querySelector("head > title").textContent;
-      presenceData.details = "Viewing the month schedule:";
-      presenceData.state = datem.replace("Google Calendar - ", "");
-    } else if (document.location.pathname.startsWith("/calendar/r/year")) {
-      const datey = document.querySelector("head > title").textContent;
-      presenceData.details = "Viewing the year schedule:";
-      presenceData.state = datey
-        .replace("Google Calendar - ", "")
-        .split(" ")[1];
-    } else if (document.location.pathname.startsWith("/calendar/r/agenda")) {
-      presenceData.details = "Browsing in the schedule";
-    } else if (document.location.pathname.startsWith("/calendar/r/customday")) {
-      presenceData.details = "Viewing the schedule of";
-      presenceData.state = "custom days";
-    } else if (document.location.pathname.startsWith("/calendar/r/eventedit")) {
-      presenceData.details = "Editing a event";
-    } else if (document.location.pathname.startsWith("/calendar/r/search")) {
-      const eventsearch = document.location.href;
-      presenceData.details = "Searching the event:";
-      presenceData.state = eventsearch
-        .replace("https://calendar.google.com/calendar/r/search?q=", "")
-        .replace(/%20/g, " ");
-    } else if (document.location.pathname.startsWith("/calendar/r/trash")) {
-      presenceData.details = "Browsing the Trash";
-    } else if (document.location.pathname == "/calendar/r/settings") {
-      presenceData.details = "In the general settings";
-    } else if (
-      document.location.pathname.startsWith("/calendar/r/settings/addcalendar")
-    ) {
-      presenceData.details = "Adding a calendar";
-    } else if (
-      document.location.pathname.startsWith(
-        "/calendar/r/settings/createcalendar"
-      )
-    ) {
-      presenceData.details = "Creating a calendar";
-    } else if (
-      document.location.pathname.startsWith(
-        "/calendar/r/settings/browsecalendars"
-      )
-    ) {
-      presenceData.details = "Browsing the calendars";
-    } else if (
-      document.location.pathname.startsWith("/calendar/r/settings/addbyurl")
-    ) {
-      presenceData.details = "Adding a calendar";
-    } else if (
-      document.location.pathname.startsWith("/calendar/r/settings/export")
-    ) {
-      presenceData.details = "Exporting or ixporting";
-      presenceData.state = "a calendar";
-    } else if (
-      document.location.pathname.startsWith("/calendar/r/settings/calendar")
-    ) {
-      presenceData.details = "In the settings of a";
-      presenceData.state = "calendar";
-    } else if (
-      document.location.href.startsWith(
-        "https://calendar.google.com/calendar/embed?"
-      )
-    ) {
-      const calendarn = document.querySelector("head > title").textContent;
-      presenceData.details = "Browsing the calendar:";
-      presenceData.state = calendarn;
-    } else if (
-      document.location.href.startsWith(
-        "https://calendar.google.com/calendar/embedhelper?"
-      )
-    ) {
-      presenceData.details = "Customizing a calendar";
-    } else {
-      presenceData.details = "Viewing the calendar";
+  if (document.location.pathname === '/') {
+    presenceData.details = strings.home
+  }
+  else if (document.location.pathname.startsWith('/calendar/')) {
+    if (document.location.pathname.includes('/r/day')) {
+      presenceData.details = strings.daySchedule
+      presenceData.state = date
+    }
+    else if (document.location.pathname.includes('/r/week')) {
+      presenceData.details = strings.weekSchedule
+      presenceData.state = date
+    }
+    else if (document.location.pathname.includes('/r/month')) {
+      presenceData.details = strings.monthSchedule
+      presenceData.state = date
+    }
+    else if (document.location.pathname.includes('/r/year')) {
+      presenceData.details = strings.yearSchedule;
+      [, presenceData.state] = date?.split(' ') ?? []
+    }
+    else if (document.location.pathname.includes('/r/agenda')) {
+      presenceData.details = strings.browsingSchedule
+    }
+    else if (document.location.pathname.includes('/r/customday')) {
+      presenceData.details = strings.viewingScheduleOf
+      presenceData.state = strings.customDays
+    }
+    else if (document.location.pathname.includes('/r/eventedit')) {
+      presenceData.details = strings.editingAnEvent
+    }
+    else if (document.location.pathname.includes('/r/search')) {
+      presenceData.details = strings.searchingEvent
+      const urlParams = new URLSearchParams(document.location.search)
+      presenceData.state = urlParams.get('q')
+    }
+    else if (document.location.pathname.includes('/r/trash')) {
+      presenceData.details = strings.browsingTrash
+    }
+    else if (document.location.pathname.includes('/r/settings/addcalendar')) {
+      presenceData.details = strings.addingCalendar
+    }
+    else if (document.location.pathname.includes('/r/settings/createcalendar')) {
+      presenceData.details = strings.creatingCalendar
+    }
+    else if (document.location.pathname.includes('/r/settings/browsecalendars')) {
+      presenceData.details = strings.browsingCalendars
+    }
+    else if (document.location.pathname.includes('/r/settings/addbyurl')) {
+      presenceData.details = strings.addingCalendarByUrl
+    }
+    else if (document.location.pathname.includes('/r/settings/export')) {
+      presenceData.details = strings.exportingCalendar
+      presenceData.state = strings.calendar
+    }
+    else if (document.location.pathname.includes('/r/settings/calendar')) {
+      presenceData.details = strings.inTheSettingsOf
+      presenceData.state = strings.calendar
+    }
+    else if (document.location.pathname.includes('/r/settings/birthdays')) {
+      presenceData.details = strings.birthdaysSettings
+    }
+    else if (document.location.pathname.includes('/r/settings')) {
+      presenceData.details = strings.generalSettings
+    }
+    else if (document.location.pathname?.split('/')[4] === 'embed') {
+      presenceData.details = strings.browsingCalendarEmbed
+      presenceData.state = document.title
+    }
+    else if (document.location.pathname?.split('/')[4] === 'embedhelper') {
+      presenceData.details = strings.customizingCalendar
+    }
+    else {
+      presenceData.details = strings.viewingCalendar
     }
   }
 
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
-});
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

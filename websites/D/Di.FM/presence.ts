@@ -1,26 +1,30 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-  clientId: "630542731701387276"
-});
+  clientId: '630542731701387276',
+})
 
-presence.on("UpdateData", () => {
+presence.on('UpdateData', () => {
   const presenceData: PresenceData = {
-    largeImageKey: "dilogo"
-  };
-  if (
-    document.getElementById("webplayer-region").getAttribute("data-state") ===
-    "playing"
-  ) {
-    const tracka = document
-      .getElementsByClassName("artist-name")[0]
-      .innerHTML.replace("-", "");
-    const trackt = document.getElementsByClassName("track-name")[0].innerHTML;
-    presenceData.details = tracka;
-    presenceData.state = trackt;
-    presenceData.smallImageKey = "play";
-  } else {
-    presenceData.state = "Browsing...";
-    presenceData.smallImageKey = "pause";
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/D/Di.FM/assets/logo.png',
   }
-
-  presence.setActivity(presenceData);
-});
+  if (
+    document.querySelector('#webplayer-region')?.getAttribute('data-state')
+    === 'playing'
+  ) {
+    presenceData.details = document
+      .querySelectorAll('.artist-name')[0]
+      ?.textContent
+      ?.replace('-', '')
+    presenceData.state = document.querySelectorAll('.track-name')[0]?.textContent
+    presenceData.smallImageKey = Assets.Play
+    presenceData.largeImageKey = document.querySelector<HTMLImageElement>(
+      'div > section.track-region.col > div > div.artwork > div > img',
+    )?.src
+  }
+  else {
+    presenceData.state = 'Browsing...'
+    presenceData.smallImageKey = Assets.Pause
+  }
+  presence.setActivity(presenceData)
+})

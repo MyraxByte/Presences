@@ -1,183 +1,155 @@
-{
-  const presence = new Presence({
-    clientId: "609220157910286346"
-  });
-  const strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    live: "presence.activity.live"
-  });
+import { ActivityType, Assets, getTimestampsFromMedia } from 'premid'
 
-  function getTimesec(
-    elapsedString = "00:00",
-    durationString = "00:00",
-    separator = ":"
-  ): { elapsedSec: number; durationSec: number } {
-    const elapsed = elapsedString.split(separator);
-    const duration = durationString.split(separator);
+const presence = new Presence({
+  clientId: '609220157910286346',
+})
 
-    let elapsedSec: number, durationSec: number;
+async function getStrings() {
+  return presence.getStrings({
+    browse: 'general.browsing',
+    play: 'general.playing',
+    pause: 'general.paused',
+    live: 'general.live',
+    buttonWatchVideo: 'general.buttonWatchVideo',
+    buttonWatchStream: 'general.buttonWatchStream',
+  },
+  )
+}
 
-    switch (elapsed.length) {
-      case 3: {
-        elapsedSec =
-          parseInt(elapsed[0]) * 60 * 60 +
-          parseInt(elapsed[1]) * 60 +
-          parseInt(elapsed[2]);
-        break;
+let videoExists = false
+
+presence.on(
+  'iFrameData',
+  (data: boolean) => {
+    videoExists = data
+  },
+)
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/N/niconico/assets/logo.png',
+}
+
+let strings: Awaited<ReturnType<typeof getStrings>>
+
+presence.on('UpdateData', async () => {
+  if (!strings)
+    strings = await getStrings()
+
+  const [privacy, buttons, ads, pause, playback] = await Promise.all([
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<boolean>('ads'),
+    presence.getSetting<boolean>('pause'),
+    presence.getSetting<boolean>('playback'),
+  ])
+  const presenceData: PresenceData = {
+    largeImageKey: ActivityAssets.Logo,
+    details: strings.browse,
+  }
+  const { hostname, href, pathname } = document.location
+  const checkAd = !!videoExists
+  const video = document.querySelector<HTMLVideoElement>('video')
+
+  switch (hostname) {
+    case 'www.nicovideo.jp': {
+      if (checkAd && ads && !privacy) {
+        presenceData.details = 'Watching an ad'
+        if (video && playback && !privacy)
+          [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestampsFromMedia(video)
       }
-      case 2: {
-        elapsedSec = parseInt(elapsed[0]) * 60 + parseInt(elapsed[1]);
-        break;
+      else if (pathname.startsWith('/watch/')) {
+        const ownerElement = document.querySelector(
+          'a[data-anchor-area="video_information"]:not(:has(div))',
+        )
+        const imageElement = document.querySelector('meta[property="og:image"]')
+
+        presenceData.details = document.querySelector('main h1')?.textContent
+        presenceData.state = `${ownerElement ? ownerElement.textContent : 'Deleted User'
+        } - ${pathname.match(/..\d+$/)?.[0]}`
+        presenceData.largeImageKey = imageElement
+          ? imageElement.attributes.getNamedItem('content')?.value
+          : ActivityAssets.Logo
+        presenceData.smallImageKey = pause ? !video?.paused ? Assets.Play : Assets.Pause : ''
+        presenceData.smallImageText = pause ? !video?.paused ? strings.play : strings.pause : ''
+        if (video && !video?.paused)
+          [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestampsFromMedia(video)
+
+        presenceData.buttons = [
+          {
+            label: strings.buttonWatchVideo,
+            url: href,
+          },
+        ]
       }
-      case 1: {
-        elapsedSec = parseInt(elapsed[0]);
-        break;
-      }
+      break
     }
 
-    switch (duration.length) {
-      case 3: {
-        durationSec =
-          parseInt(duration[0]) * 60 * 60 +
-          parseInt(duration[1]) * 60 +
-          parseInt(duration[2]);
-        break;
+    case 'live.nicovideo.jp':
+    case 'live2.nicovideo.jp': {
+      if (checkAd && ads && !privacy) {
+        const video = document.querySelector<HTMLVideoElement>('video')
+        presenceData.details = 'Watching an ad'
+        if (video && playback && !privacy)
+          [presenceData.startTimestamp, presenceData.endTimestamp] = getTimestampsFromMedia(video)
       }
-      case 2: {
-        durationSec = parseInt(duration[0]) * 60 + parseInt(duration[1]);
-        break;
+      else if (pathname.startsWith('/watch/lv')) {
+        presenceData.details = document.querySelector(
+          ' [class^=\'___program-title___\'] span ',
+        )?.textContent ?? ''
+        presenceData.state = `${
+          (
+            document.querySelector('[class^=\'___channel-name-anchor___\']')
+            ?? document.querySelector('[class^=\'___group-name-anchor___\']')
+          )?.textContent
+        } - ${pathname.match(/lv\d+/)?.[0]}`
+        presenceData.smallImageKey = Assets.Live
+        presenceData.smallImageText = strings.live
+        if (video && video?.paused)
+          [presenceData.startTimestamp] = getTimestampsFromMedia(video)
+
+        presenceData.buttons = [
+          {
+            label: strings.buttonWatchStream,
+            url: href,
+          },
+        ]
       }
-      case 1: {
-        durationSec = parseInt(duration[0]);
-        break;
-      }
+      break
     }
 
-    return { elapsedSec: elapsedSec, durationSec: durationSec };
+    case 'seiga.nicovideo.jp': {
+      if (pathname.startsWith('/seiga/im')) {
+        presenceData.details = document.querySelector('.title')?.textContent
+        presenceData.state = `${
+          document.querySelector('#ko_watchlist_header.user .user_name strong')
+            ?.textContent
+        } - ${pathname.match(/im\d+/)?.[0]}`
+      }
+      else if (pathname.startsWith('/watch/mg')) {
+        presenceData.details = document.querySelector('.title')?.textContent
+        presenceData.state = `${
+          document.querySelector('.author_name')?.textContent
+        } - ${pathname.match(/mg\d+/)?.[0]}`
+      }
+
+      break
+    }
   }
 
-  presence.on("UpdateData", async () => {
-    switch (location.hostname) {
-      case "www.nicovideo.jp": {
-        if (
-          location.pathname.startsWith("/watch/") &&
-          document.querySelector(".VideoPlayer video")
-        ) {
-          const title = document.querySelector(".VideoTitle").textContent;
+  if ((presenceData.details || presenceData.state) && privacy) {
+    presenceData.details = strings.buttonWatchVideo
+    delete presenceData.state
+  }
 
-          const ownerElement =
-            document.querySelector(".ChannelInfo-pageLink") ||
-            document.querySelector(".VideoOwnerInfo-pageLink") ||
-            null;
-          let owner;
-          if (ownerElement) {
-            [, owner] = ownerElement.textContent.match(/(.+) さん$/) || [
-              ownerElement.textContent
-            ];
-          } else {
-            owner = "Deleted User";
-          }
+  if (presenceData.startTimestamp && (!playback || privacy))
+    delete presenceData.startTimestamp
 
-          const [videoId] = location.pathname.match(/..\d+$/);
+  if (playback && !privacy && presenceData.endTimestamp)
+    (presenceData as PresenceData).type = ActivityType.Watching
+  if (presenceData.buttons && (!buttons || privacy))
+    delete presenceData.buttons
 
-          const isPlaying = !!document.querySelector(".PlayerPauseButton");
-
-          const video: HTMLVideoElement = document.querySelector(
-            ".VideoPlayer video"
-          );
-          const elapsedSec = Math.floor(video.currentTime);
-
-          const presenceData: PresenceData = {
-            details: title,
-            state: `${owner} - ${videoId}`,
-            largeImageKey: "niconico",
-            smallImageKey: isPlaying ? "play" : "pause",
-            smallImageText: isPlaying
-              ? (await strings).play
-              : (await strings).pause,
-            startTimestamp: Math.floor(Date.now() / 1000) - elapsedSec
-          };
-
-          if (isPlaying) {
-            presence.setTrayTitle(title);
-          } else {
-            delete presenceData.startTimestamp;
-          }
-
-          presence.setActivity(presenceData);
-        }
-        break;
-      }
-
-      case "live.nicovideo.jp":
-      case "live2.nicovideo.jp": {
-        if (location.pathname.startsWith("/watch/lv")) {
-          const title = document.querySelector("[class^='___title___']")
-            .textContent;
-          const ownerElement =
-            document.querySelector("[class^='___channel-name-anchor___']") ||
-            document.querySelector("[class^='___group-name-anchor___']");
-          const owner = ownerElement.textContent;
-          const [liveId] = location.pathname.match(/lv\d+/);
-
-          const elapsed = document.querySelector(
-            "span[class^='___elapsed-time___'] span"
-          ).textContent;
-
-          const presenceData: PresenceData = {
-            details: title,
-            state: `${owner} - ${liveId}`,
-            largeImageKey: "niconico",
-            smallImageKey: "live",
-            smallImageText: (await strings).live,
-            startTimestamp:
-              Math.floor(Date.now() / 1000) - getTimesec(elapsed).elapsedSec
-          };
-
-          presence.setActivity(presenceData);
-        } else {
-          presence.clearActivity();
-        }
-        break;
-      }
-
-      case "seiga.nicovideo.jp": {
-        if (location.pathname.startsWith("/seiga/im")) {
-          const title = document.querySelector(".title").textContent;
-          const owner = document.querySelector(
-            "#ko_watchlist_header.user .user_name strong"
-          ).textContent;
-          const [seigaId] = location.pathname.match(/im\d+/);
-
-          const presenceData: PresenceData = {
-            details: title,
-            state: `${owner} - ${seigaId}`,
-            largeImageKey: "niconico"
-          };
-
-          presence.setActivity(presenceData);
-        } else if (location.pathname.startsWith("/watch/mg")) {
-          const title = document.querySelector(".title").textContent;
-          const owner = document.querySelector(".author_name").textContent;
-          const [mangaId] = location.pathname.match(/mg\d+/);
-
-          const presenceData: PresenceData = {
-            details: title,
-            state: `${owner} - ${mangaId}`,
-            largeImageKey: "niconico"
-          };
-
-          presence.setActivity(presenceData);
-        } else {
-          presence.clearActivity();
-        }
-        break;
-      }
-
-      default:
-        presence.clearActivity();
-        break;
-    }
-  });
-}
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

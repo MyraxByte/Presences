@@ -1,31 +1,29 @@
-var iframe = new iFrame();
-iframe.on("UpdateData", async () => {
-  var video: HTMLVideoElement;
-  if (document.querySelector(".video") !== null) {
-    video = document.querySelector(".video");
-    if (video != undefined && !isNaN(video.duration)) {
+const iframe = new iFrame()
+iframe.on('UpdateData', async () => {
+  if (document.querySelector('.video')) {
+    const video = document.querySelector<HTMLVideoElement>('.video')
+    if (video && !Number.isNaN(video.duration)) {
       iframe.send({
-        iframe_video: {
+        iframeVideo: {
           iFrameVideo: true,
           currTime: video.currentTime,
           dur: video.duration,
-          paused: video.paused
-        }
-      });
-    }
-  } else if (
-    document.querySelector("body > div > div > div > video") !== null
-  ) {
-    video = document.querySelector("body > div > div > div > video");
-    if (video != undefined && !isNaN(video.duration)) {
-      iframe.send({
-        iframe_video: {
-          iFrameVideo: true,
-          currTime: video.currentTime,
-          dur: video.duration,
-          paused: video.paused
-        }
-      });
+          paused: video.paused,
+        },
+      })
     }
   }
-});
+  else if (document.querySelector('body > div > div > div > video')) {
+    const video = document.querySelector<HTMLVideoElement>('body > div > div > div > video')
+    if (video && !Number.isNaN(video.duration)) {
+      iframe.send({
+        iframeVideo: {
+          iFrameVideo: true,
+          currTime: video.currentTime,
+          dur: video.duration,
+          paused: video.paused,
+        },
+      })
+    }
+  }
+})

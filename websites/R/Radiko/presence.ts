@@ -1,72 +1,81 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "736620343279484959"
-  }),
-  _preStrings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    browsing: "presence.activity.browsing"
-  });
+  clientId: '736620343279484959',
+})
+async function getStrings() {
+  return presence.getStrings(
+    {
+      play: 'general.playing',
+      pause: 'general.paused',
+      browsing: 'general.browsing',
+    },
 
+  )
+}
+let strings: Awaited<ReturnType<typeof getStrings>>
 // Pre-declare variable
-let radioStation = "",
-  startTimeStamp = new Date().getTime();
+let oldLang: string | null = null
+let radioStation = ''
+let startTimeStamp = Date.now()
 
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
+  const [codeChannel] = document.location.hash.split('/').slice(-1)
   // code
-  const preStrings = await _preStrings,
-    streamPlayer = document.getElementById("stream-player") as HTMLElement,
-    whenPlayerIsOn = streamPlayer.style.display,
-    state: PresenceData = {
-      largeImageKey: "largeimage"
-    };
-
+  const presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/R/Radiko/assets/logo.png',
+    buttons: [
+      { label: `Listen to ${codeChannel}`, url: document.location.href },
+    ],
+  }
+  const [newLang, isTimeVisible] = await Promise.all([
+    presence.getSetting<string>('lang').catch(() => 'en'),
+    presence.getSetting<boolean>('isTimeVisible'),
+  ])
+  if (oldLang !== newLang || !strings) {
+    oldLang = newLang
+    strings = await getStrings()
+  }
   // In Radio
-  if (whenPlayerIsOn === "block") {
-    const _showTitle = document.querySelector(
-        "a.slick-slide:nth-child(1) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1)"
-      ) as HTMLElement,
-      showTitle = _showTitle.textContent,
-      codeChannel = document
-        .querySelector("a.slick-slide:nth-child(1)")
-        .getAttribute("href")
-        .split("/")
-        .slice(-1)[0],
-      ifPlayed = document
-        .querySelector(".icon--play-02")
-        .classList.contains("on");
+  if (
+    (document.querySelector('#stream-player') as HTMLElement).style.display
+    === 'block'
+  ) {
     // If play
-    if (ifPlayed) {
+    if (document.querySelector('.icon--play-02')?.classList.contains('on')) {
       // This logic make timestamp can't changed.
-      if (codeChannel !== radioStation) {
-        radioStation = codeChannel;
-        startTimeStamp = new Date().getTime();
+      if (codeChannel && codeChannel !== radioStation) {
+        radioStation = codeChannel
+        startTimeStamp = Date.now()
       }
 
-      state.details = `Listening to ${radioStation} channel.`;
-      state.state = showTitle;
-      state.smallImageKey = "spiriteplay";
-      state.smallImageText = preStrings.play;
-      state.startTimestamp = startTimeStamp;
+      presenceData.details = `Listening to ${radioStation} channel.`
+      presenceData.state = document.querySelector(
+        '#now-programs-list > h1',
+      )?.textContent
+      presenceData.smallImageKey = Assets.Play
+      presenceData.smallImageText = strings.play
+      presenceData.startTimestamp = isTimeVisible ? startTimeStamp : null
     }
-    // If pause
     else {
-      if (codeChannel !== "___PAUSED___") {
-        radioStation = "___PAUSED___";
-        startTimeStamp = new Date().getTime();
+      // If pause
+      if (codeChannel !== '___PAUSED___') {
+        radioStation = '___PAUSED___'
+        startTimeStamp = Date.now()
       }
 
-      state.details = "Paused.";
-      state.state = `${codeChannel} channel.`;
-      state.smallImageKey = "spiritepause";
-      state.smallImageText = preStrings.pause;
+      presenceData.details = 'Paused.'
+      presenceData.state = `${codeChannel} channel.`
+      presenceData.smallImageKey = Assets.Pause
+      presenceData.smallImageText = strings.pause
     }
   }
-  // Idling state
   else {
-    state.details = "Idling";
-    state.smallImageKey = "spiriteidling";
-    state.smallImageText = preStrings.browsing;
+    // Idling state
+    presenceData.details = 'Idling'
+    presenceData.smallImageKey = 'https://cdn.rcd.gg/PreMiD/websites/R/Radiko/assets/0.png'
+    presenceData.smallImageText = strings.browsing
   }
 
-  presence.setActivity(state);
-});
+  presence.setActivity(presenceData)
+})

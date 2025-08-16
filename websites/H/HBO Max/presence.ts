@@ -1,200 +1,155 @@
+import { ActivityType, Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "720731927216259083"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    browsing: "presence.activity.browsing"
-  }),
-  timer = Date.now(),
-  selectors: Record<string, string> = {
-    "series:name":
-      "#Viewport > div.default > div:nth-child(3) div > span > span > span",
-    "series:altname": "#Viewport > div.default div > span > span > span",
-    "feature:name":
-      "#Viewport > div.default > div:nth-child(3) div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > span > span:nth-child(2)",
-    "feature:altname": "#Viewport div:nth-child(1) > span > span:nth-child(2)",
-    "feature:desc:name":
-      "#Viewport > div.default > div:nth-child(3) div:nth-child(1) > div:nth-child(2) > div:nth-child(4) > span > span",
-    "feature:desc:altname": "#Viewport div:nth-child(4) > span > span",
-    "episode:name":
-      "#Viewport > div.default > div:nth-child(3) div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > span > span:nth-child(2)",
-    "episode:altname":
-      "#Viewport > div.default > div:nth-child(3) div:nth-child(1) > div:nth-child(2) > a > div > span > span",
-    "episode:number":
-      "#Viewport > div.default > div:nth-child(3) div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > span > span:nth-child(1)",
-    "episode:altnumber":
-      "#Viewport div:nth-child(2) > div:nth-child(2) > span > span:nth-child(1)",
-    "episode:series:name":
-      "#Viewport > div.default > div:nth-child(3) div:nth-child(1) > div:nth-child(2) > a > div > span > span",
-    "episode:series:altname": "#Viewport a > div > span > span"
-  };
+  clientId: '1394513095367463043',
+})
 
-function pathHandler(string: string): boolean {
-  return document.location.pathname.toLowerCase().includes(string);
+let isFetching = false
+
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/H/HBO%20Max/assets/logo.jpeg',
 }
 
-/**
- * Don't even attempt to understand what it does
- * @param {string} sl HTMLElement selector
- * @param {string} ff Font family
- * @param {string} fz Font size
- * @param {string} pt Match pattern
- * @returns The first filtered element or none
- */
-function nodeSelector(
-  sl: string,
-  ff: string,
-  fz: string,
-  pt: string = null
-): HTMLElement {
-  const arr: HTMLElement[] = Array.prototype.slice.call(
-    document.querySelectorAll(sl)
-  );
-  return arr.find(
-    (node) =>
-      node?.tagName.toLowerCase() === "span" &&
-      (node?.style.fontFamily.length === 0
-        ? node?.parentElement.style.fontFamily
-        : node?.style.fontFamily) === ff &&
-      (node?.style.fontSize.length === 0
-        ? node?.parentElement.style.fontSize
-        : node?.style.fontSize) === fz &&
-      (node?.style.fontFamily.length === 0 && node?.style.fontSize.length === 0
-        ? true
-        : node?.hasChildNodes() && node?.childNodes[0].nodeType === 3) &&
-      (pt ? node?.textContent?.includes(pt) : true)
-  );
-}
-
-setInterval(async function () {
-  if (document.readyState !== "complete") return;
-
-  const data: PresenceData = {
-      largeImageKey: "lg"
-    },
-    video: HTMLVideoElement = document.querySelector("video");
-
-  if (document.location.hostname === "play.hbomax.com") {
-    const path = document.location.pathname;
-
-    switch (true) {
-      case path === "/profileSelect":
-        Object.assign(data, {
-          details: "Selecting a profile"
-        });
-        break;
-      case path === "/search":
-        Object.assign(data, {
-          details: "Searching",
-          smallImageKey: "search",
-          smallImageText: (await strings).browsing
-        });
-        break;
-      case pathHandler(":series:"):
-      case pathHandler("/series/"):
-      case pathHandler(":season:"):
-      case pathHandler("/season/"):
-        Object.assign(data, {
-          details:
-            nodeSelector(selectors["series:name"], "street2_medium", "44px")
-              ?.textContent ||
-            nodeSelector(selectors["series:altname"], "street2_medium", "44px")
-              ?.textContent ||
-            undefined,
-          state: "Series"
-        });
-        break;
-      case pathHandler(":episode:"):
-      case pathHandler("/episode/"): {
-        const epnumber =
-          nodeSelector(selectors["episode:number"], "street2_book", "28px")
-            ?.textContent ||
-          nodeSelector(selectors["episode:altnumber"], "street2_book", "28px")
-            ?.textContent ||
-          undefined;
-        const epname =
-          nodeSelector(selectors["episode:name"], "street2_medium", "28px")
-            ?.textContent ||
-          nodeSelector(selectors["episode:altname"], "street2_medium", "28px")
-            ?.textContent ||
-          undefined;
-
-        Object.assign(data, {
-          details:
-            nodeSelector(
-              selectors["episode:series:name"],
-              "street2_bold",
-              "12px"
-            )?.textContent ||
-            nodeSelector(
-              selectors["episode:series:altname"],
-              "street2_bold",
-              "12px"
-            )?.textContent ||
-            undefined,
-          state:
-            epnumber && epname
-              ? `${epnumber} • ${epname}`
-              : epnumber || epname || "Episode"
-        });
-
-        if (video?.currentTime && video?.currentTime > 0)
-          Object.assign(data, {
-            smallImageKey: video.paused ? "pause" : "play",
-            smallImageText: video.paused
-              ? (await strings).pause
-              : (await strings).play
-          });
-        break;
+let fetchedInfo: {
+  included: {
+    attributes: {
+      alternateId: string
+      src?: string
+      name?: string
+      episodeNumber?: number
+      seasonNumber?: number
+      videoType?: string
+    }
+    id: string
+    relationships?: {
+      images: {
+        data: {
+          id: string
+        }[]
       }
-      case pathHandler(":extra:"):
-      case pathHandler("/extra/"):
-      case pathHandler(":feature:"):
-      case pathHandler("/feature/"): {
-        const desc =
-          nodeSelector(selectors["feature:desc:name"], "street2_book", "14px")
-            ?.textContent ||
-          nodeSelector(
-            selectors["feature:desc:altname"],
-            "street2_book",
-            "14px"
-          )?.textContent;
-
-        Object.assign(data, {
-          details:
-            nodeSelector(selectors["feature:name"], "street2_medium", "28px")
-              ?.textContent ||
-            nodeSelector(selectors["feature:altname"], "street2_medium", "28px")
-              ?.textContent ||
-            undefined,
-          state: `${
-            pathHandler(":extra:") || pathHandler("/extra/")
-              ? "Extra"
-              : "Feature"
-          }${desc ? " • " + desc : ""}`
-        });
-
-        if (video?.currentTime && video?.currentTime > 0)
-          Object.assign(data, {
-            smallImageKey: video.paused ? "pause" : "play",
-            smallImageText: video.paused
-              ? (await strings).pause
-              : (await strings).play
-          });
-        break;
-      }
-      default: {
-        Object.assign(data, { details: "Browsing" });
-        switch (true) {
-          case pathHandler(":page:home"):
-            Object.assign(data, { state: "Home" });
-            break;
+      show: {
+        data: {
+          id: string
         }
-        break;
-        //tbd: add more specific pages (optional/anyone can do so!)
       }
     }
+  }[]
+  path: string
+}
+
+function findAlternateId(id: string) {
+  return fetchedInfo.included?.find(x => x.attributes?.alternateId === id)
+}
+
+function findId(id: string) {
+  return fetchedInfo.included?.find(x => x.id === id)
+}
+
+async function fetchPageInfo() {
+  const { pathname } = location
+
+  if (isFetching || fetchedInfo?.path === pathname)
+    return
+  isFetching = true
+
+  try {
+    fetchedInfo = await fetch(
+      `https://default.any-amer.prd.api.hbomax.com/cms/routes${pathname}?include=default&page[items.size]=10`,
+      {
+        method: 'GET',
+        credentials: 'include',
+      },
+    ).then(res => res.json())
   }
-  presence.setActivity(data);
-});
+  catch {
+    isFetching = false
+    return false
+  }
+
+  fetchedInfo.path = pathname
+  isFetching = false
+
+  return true
+}
+
+function getTitleInfo(usePresenceName?: boolean) {
+  if (!fetchedInfo)
+    return
+
+  if (location.pathname.includes('/video/')) {
+    const episodeInfo = findAlternateId(location.pathname.split('/')[3]!)
+    const showInfo = findAlternateId(episodeInfo?.relationships?.show.data.id ?? '')
+
+    if (!episodeInfo || !showInfo)
+      return
+
+    return {
+      name: usePresenceName ? showInfo.attributes.name : 'Max',
+      details: usePresenceName
+        ? episodeInfo.attributes.name
+        : showInfo.attributes.name,
+      state: episodeInfo.attributes.videoType === 'MOVIE'
+        ? 'Movie'
+        : usePresenceName
+          ? `Season ${episodeInfo.attributes.seasonNumber}, Episode ${episodeInfo.attributes.episodeNumber}`
+          : `S${episodeInfo.attributes.seasonNumber}:E${episodeInfo.attributes.episodeNumber} ${episodeInfo.attributes.name}`,
+      largeImageKey: findId(showInfo.relationships?.images.data[5]?.id ?? '')?.attributes.src,
+    }
+  }
+
+  const info = findAlternateId(location.pathname.split('/')[2]!)
+  return {
+    state: info?.attributes.name,
+    largeImageKey: findId(info?.relationships?.images.data[5]?.id ?? '')?.attributes.src,
+  }
+}
+
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    type: ActivityType.Watching,
+    largeImageKey: ActivityAssets.Logo,
+  }
+  const [usePresenceName, showCoverArt] = await Promise.all([
+    presence.getSetting<boolean>('usePresenceName'),
+    presence.getSetting<boolean>('cover'),
+  ])
+  await fetchPageInfo()
+
+  switch (document.location.pathname.split('/')[1]) {
+    case 'show': {
+      Object.assign(presenceData, getTitleInfo())
+      presenceData.details = 'Viewing a show:'
+      break
+    }
+    case 'movie': {
+      Object.assign(presenceData, getTitleInfo())
+      presenceData.details = 'Viewing a movie:'
+      break
+    }
+    case 'video': {
+      const video = document.querySelector('video')
+      Object.assign(presenceData, getTitleInfo(usePresenceName))
+
+      if (video) {
+        if (!video.paused) {
+          [presenceData.startTimestamp, presenceData.endTimestamp] = presence.getTimestampsfromMedia(video)
+        }
+
+        presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+        presenceData.smallImageText = video.paused ? 'Paused' : 'Playing'
+      }
+      break
+    }
+    default: {
+      presenceData.details = 'Browsing...'
+      break
+    }
+  }
+
+  if (!showCoverArt)
+    presenceData.largeImageKey = ActivityAssets.Logo
+
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

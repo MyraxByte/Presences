@@ -1,19 +1,18 @@
-const iframe = new iFrame();
+const iframe = new iFrame()
 
-iframe.on("UpdateData", async () => {
-  let video: HTMLVideoElement;
+iframe.on('UpdateData', async () => {
+  let video: HTMLVideoElement | null = null
 
-  if (document.querySelector(".jw-video") !== null) {
-    video = document.querySelector(".jw-video");
-  } else if (document.querySelector(".html5-video-container") !== null) {
-    video = document.querySelector(".html5-video-container > video");
-  }
+  if (document.querySelector('.jw-video'))
+    video = document.querySelector('.jw-video')
+  else if (document.querySelector('.html5-video-container'))
+    video = document.querySelector('.html5-video-container > video')
 
-  if (video != undefined && !isNaN(video.duration)) {
+  if (video && !Number.isNaN(video.duration)) {
     iframe.send({
       current: video.currentTime,
       duration: video.duration,
-      paused: video.paused
-    });
+      paused: video.paused,
+    })
   }
-});
+})

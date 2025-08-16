@@ -1,10 +1,13 @@
-var presence = new Presence({
-  clientId: "555834227833307146"
-});
+const presence = new Presence({
+  clientId: '555834227833307146',
+})
 
-presence.on("UpdateData", async () => {
-  var presenceData = await presence.getPageletiable("PreMiD_PresenceData");
+presence.on('UpdateData', async () => {
+  const presenceData = await presence.getPageletiable<{ data: PresenceData }>(
+    'PreMiD_PresenceData',
+  )
 
-  if (presenceData === null) presence.setActivity();
-  else presence.setActivity(presenceData.data);
-});
+  if (!presenceData)
+    presence.setActivity()
+  else presence.setActivity(presenceData.data)
+})

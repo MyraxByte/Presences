@@ -1,203 +1,207 @@
-const presence = new Presence({
-    clientId: "735229766701154357"
-  }),
-  strings = presence.getStrings({
-    browse: "presence.activity.browsing",
-    search: "presence.activity.searching"
-  }),
-  getElement = (query: string): string | undefined => {
-    return document.querySelector(query)?.textContent;
-  };
+import { Assets } from 'premid'
 
-let elapsed = Math.floor(Date.now() / 1000),
-  prevUrl = document.location.href;
+const presence = new Presence({
+  clientId: '735229766701154357',
+})
+const strings = presence.getStrings({
+  browse: 'general.browsing',
+  search: 'general.searching',
+})
+function getElement(query: string): string | undefined {
+  return document.querySelector(query)?.textContent ?? undefined
+}
+
+let elapsed = Math.floor(Date.now() / 1000)
+let prevUrl = document.location.href
 
 const statics = {
-  "/pages/global/pagegone.jsf/": {
-    details: "404",
-    state: "Not Found"
+  '/pages/global/pagegone.jsf/': {
+    details: '404',
+    state: 'Not Found',
   },
-  "/page/login/": {
-    details: "Logging In..."
+  '/page/login/': {
+    details: 'Logging In...',
   },
-  "/page/register/": {
-    details: "Registering..."
+  '/page/register/': {
+    details: 'Registering...',
   },
-  "/page/about/": {
-    details: "Viewing Page...",
-    state: "About"
+  '/page/about/': {
+    details: 'Viewing Page...',
+    state: 'About',
   },
-  "/page/guide/": {
-    details: "Viewing Page...",
-    state: "User Guide"
+  '/page/guide/': {
+    details: 'Viewing Page...',
+    state: 'User Guide',
   },
-  "/page/privacy/": {
-    details: "Viewing Page...",
-    state: "Privacy Policy"
+  '/page/privacy/': {
+    details: 'Viewing Page...',
+    state: 'Privacy Policy',
   },
-  "/page/developer/": {
-    details: "Viewing Page...",
-    state: "Developer Resources"
+  '/page/developer/': {
+    details: 'Viewing Page...',
+    state: 'Developer Resources',
   },
-  "/Top/": {
-    details: "Viewing Page...",
-    state: "Top Hardware"
+  '/Top/': {
+    details: 'Viewing Page...',
+    state: 'Top Hardware',
   },
-  "/Software/": {
-    details: "Viewing Page...",
-    state: "PC Software"
-  }
-};
+  '/Software/': {
+    details: 'Viewing Page...',
+    state: 'PC Software',
+  },
+}
+const assets = {
+  ssd: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/0.png',
+  cpu: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/1.png',
+  usb: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/2.png',
+  hdd: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/3.png',
+  gpu: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/4.png',
+  ram: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/5.png',
+}
 
-presence.on("UpdateData", async () => {
-  const host = location.host,
-    path = location.pathname.replace(/\/?$/, "/"),
-    showSearch = await presence.getSetting("search"),
-    showTimestamps = await presence.getSetting("timestamp");
+presence.on('UpdateData', async () => {
+  const { host, pathname, href } = document.location
+  const path = pathname.replace(/\/?$/, '/')
+  const showSearch = await presence.getSetting<boolean>('search')
+  const showTimestamps = await presence.getSetting<boolean>('timestamp')
 
-  let data: PresenceData = {
-    details: undefined,
-    state: undefined,
-    largeImageKey: "userbenchmark",
-    smallImageKey: undefined,
-    smallImageText: undefined,
+  let presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/U/UserBenchmark/assets/logo.png',
     startTimestamp: elapsed,
-    endTimestamp: undefined
-  };
+  }
 
-  if (document.location.href !== prevUrl) {
-    prevUrl = document.location.href;
-    elapsed = Math.floor(Date.now() / 1000);
+  if (href !== prevUrl) {
+    prevUrl = href
+    elapsed = Math.floor(Date.now() / 1000)
   }
 
   for (const [k, v] of Object.entries(statics)) {
-    if (path.match(k)) {
-      data = { ...data, ...v };
-    }
+    if (path.match(k))
+      presenceData = { ...presenceData, ...v }
   }
 
-  if (path === "/") {
-    data.details = "Browsing...";
-    data.state = "Home";
+  if (path === '/') {
+    presenceData.details = 'Browsing...'
+    presenceData.state = 'Home'
   }
 
-  if (path.includes("/Compare/")) {
-    data.details = `Comparing ${getElement(".fastinslowout.active")}s...`;
+  if (path.includes('/Compare/')) {
+    presenceData.details = `Comparing ${getElement(
+      '.fastinslowout.active',
+    )}s...`
 
     const parseComparison = (text: string, date: string): string => {
-        return date ? text : "Unspecified";
-      },
-      comp1 = getElement("#select2-chosen-1"),
-      comp2 = getElement("#select2-chosen-2"),
-      compDate1 = getElement(".cmp-cpt-l"),
-      compDate2 = getElement(".cmp-cpt-r");
-
-    data.state = `${parseComparison(comp1, compDate1)} vs ${parseComparison(
-      comp2,
-      compDate2
-    )}`;
+      return date ? text : 'Unspecified'
+    }
+    presenceData.state = `${parseComparison(
+      getElement('#select2-chosen-1')!,
+      getElement('.cmp-cpt-l')!,
+    )} vs ${parseComparison(
+      getElement('#select2-chosen-2')!,
+      getElement('.cmp-cpt-r')!,
+    )}`
   }
 
-  if (path.includes("/EFps/")) {
-    data.details = "Comparing PC with EFps...";
+  if (path.includes('/EFps/')) {
+    presenceData.details = 'Comparing PC with EFps...'
 
-    const games = [
-        "Counter Strike: Global Offensive",
-        "Grand Theft Auto 5",
-        "Overwatch",
-        "PlayerUnknown's Battlegrounds",
-        "Fortnite"
-      ],
-      activeBtn = document.querySelector(
-        ".btn-group-justified > .btn.btn-default.active"
-      ),
-      btnId = Array.from(activeBtn.parentNode.children).indexOf(activeBtn);
-
-    data.state = games[btnId];
-  }
-
-  if (path.includes("/User/")) {
-    data.details = "Viewing Profile...";
-    data.state = `${getElement(".lightblacktext > span")} (${getElement(
-      "li.active > a"
+    const activeBtn = document.querySelector(
+      '.btn-group-justified > .btn.btn-default.active',
     )
-      .split(" ")
-      .shift()})`;
+
+    presenceData.state = [
+      'Counter Strike: Global Offensive',
+      'Grand Theft Auto 5',
+      'Overwatch',
+      'PlayerUnknown\'s Battlegrounds',
+      'Fortnite',
+    ][Array.from(activeBtn?.parentNode?.children ?? []).indexOf(activeBtn!)]
   }
 
-  if (path.includes("/UserRun/")) {
-    data.details = "Viewing Performance Report...";
-
-    const id = path.split("/").slice(-2)[0];
-    data.state = `${id} - ${getElement(".pg-head-toption-post")}`;
+  if (path.includes('/User/')) {
+    presenceData.details = 'Viewing Profile...'
+    presenceData.state = `${getElement('.lightblacktext > span')} (${getElement(
+      'li.active > a',
+    )
+      ?.split(' ')
+      .shift()})`
   }
 
-  if (path.includes("/PCGame/")) {
-    data.details = "Viewing PC Game...";
-    data.state = getElement(".stealthlink");
+  if (path.includes('/UserRun/')) {
+    presenceData.details = 'Viewing Performance Report...'
+    presenceData.state = `${path.split('/').slice(-2)[0]} - ${getElement(
+      '.pg-head-toption-post',
+    )}`
   }
 
-  if (showSearch && path.includes("/Search/")) {
-    data.details = "Searching...";
-
-    const searchBox: HTMLInputElement = document.querySelector(
-      ".top-menu-search-input"
-    );
-    data.state = searchBox.value;
+  if (path.includes('/PCGame/')) {
+    presenceData.details = 'Viewing PC Game...'
+    presenceData.state = getElement('.stealthlink')
   }
 
-  if (path.includes("/Faq/")) {
-    data.details = "Viewing FAQ...";
-    data.state = getElement(".stealthlink");
+  if (showSearch && path.includes('/Search/')) {
+    presenceData.details = 'Searching...'
+
+    presenceData.state = document.querySelector<HTMLInputElement>(
+      '.top-menu-search-input',
+    )?.value
   }
 
-  if (host === "www.userbenchmark.com") {
-    if (path.includes("/PCBuilder/")) {
-      data.details = "Building PC...";
+  if (path.includes('/Faq/')) {
+    presenceData.details = 'Viewing FAQ...'
+    presenceData.state = getElement('.stealthlink')
+  }
 
-      const compCount = document.querySelector(
-        ".container-fluid table > tbody:nth-child(2)"
-      )?.childElementCount;
-      data.state = `${compCount} Components`;
+  if (host === 'www.userbenchmark.com') {
+    if (path.includes('/PCBuilder/')) {
+      presenceData.details = 'Building PC...'
+
+      presenceData.state = `${
+        document.querySelector('.container-fluid table > tbody:nth-child(2)')
+          ?.childElementCount
+      } Components`
     }
 
-    if (path.includes("/System/")) {
-      data.details = "Viewing Motherboard...";
-      data.state = `${getElement(".pg-head-toption > a")} ${getElement(
-        ".stealthlink"
-      )}`;
+    if (path.includes('/System/')) {
+      presenceData.details = 'Viewing Motherboard...'
+      presenceData.state = `${getElement('.pg-head-toption > a')} ${getElement(
+        '.stealthlink',
+      )}`
     }
-  } else {
-    const product = getElement(".pg-head-title .stealthlink");
+  }
+  else {
+    const product = getElement('.pg-head-title .stealthlink')
     if (product) {
-      data.details = `Viewing ${getElement(".fastinslowout.active")}...`;
-      data.state = `${getElement(".pg-head-toption > a")} ${product}`;
+      presenceData.details = `Viewing ${getElement(
+        '.fastinslowout.active',
+      )}...`
+      presenceData.state = `${getElement('.pg-head-toption > a')} ${product}`
     }
   }
 
-  if (data.details) {
-    if (data.details.match("(Browsing|Viewing)")) {
-      data.smallImageKey = "reading";
-      data.smallImageText = (await strings).browse;
+  if (presenceData.details && typeof presenceData.details === 'string') {
+    if (presenceData.details.match('(Browsing|Viewing)')) {
+      presenceData.smallImageKey = Assets.Reading
+      presenceData.smallImageText = (await strings).browse
     }
-    if (data.details.match("(Searching)")) {
-      data.smallImageKey = "search";
-      data.smallImageText = (await strings).search;
+    if (presenceData.details.match('(Searching)')) {
+      presenceData.smallImageKey = Assets.Search
+      presenceData.smallImageText = (await strings).search
     }
     if (!showTimestamps) {
-      delete data.startTimestamp;
-      delete data.endTimestamp;
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
     }
 
-    if (path === "/" && !host.startsWith("www")) {
-      const hardware = host.split(".").shift();
-      data.smallImageKey = hardware;
-      data.smallImageText = hardware.toUpperCase();
+    if (path === '/' && !host.startsWith('www')) {
+      const hardware = host.split('.').shift()
+      presenceData.smallImageKey = assets[hardware as keyof typeof assets]
+      presenceData.smallImageText = hardware?.toUpperCase()
     }
 
-    presence.setActivity(data);
-  } else {
-    presence.setActivity();
-    presence.setTrayTitle();
+    presence.setActivity(presenceData)
   }
-});
+  else {
+    presence.setActivity()
+  }
+})

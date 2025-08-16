@@ -1,42 +1,39 @@
-var presence = new Presence({
-  clientId: "648494004870184981"
-});
+const presence = new Presence({
+  clientId: '648494004870184981',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-var browsingStamp = Math.floor(Date.now() / 1000);
-var title: any;
-
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-    largeImageKey: "4gamers"
-  };
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/0-9/4gamers/assets/logo.png',
+  }
 
-  if (document.location.hostname == "www.4gamers.com.tw") {
-    if (document.location.pathname == "/") {
-      presenceData.startTimestamp = browsingStamp;
-      presenceData.details = "Viewing home page";
-    } else if (document.location.pathname.includes("/new")) {
-      title = document.getElementsByClassName("news-header-title")[0].innerHTML;
-      var category = document.getElementsByClassName("news-header-category ")[0]
-        .innerHTML;
-      presenceData.details = title;
-      presenceData.state = "Category: " + category;
-    } else if (document.location.pathname.includes("magazine")) {
-      title = document.getElementsByClassName("magazine-content-title")[0]
-        .innerHTML;
-      var time = document.getElementsByClassName("magazine-content-time")[0]
-        .innerHTML;
-      presenceData.details = title;
-      presenceData.state = "Publish Date: " + time;
-    } else if (document.location.pathname.includes("tournament")) {
-      presenceData.details = "賽事專欄";
+  if (document.location.hostname === 'www.4gamers.com.tw') {
+    if (document.location.pathname === '/') {
+      presenceData.startTimestamp = browsingTimestamp
+      presenceData.details = 'Viewing home page'
+    }
+    else if (document.location.pathname.includes('/new')) {
+      presenceData.details = document.querySelectorAll('.news-header-title')[0]?.textContent
+      presenceData.state = `Category: ${
+        document.querySelectorAll('.news-header-category')[0]?.textContent
+      }`
+    }
+    else if (document.location.pathname.includes('magazine')) {
+      presenceData.details = document.querySelectorAll('.magazine-content-title')[0]?.textContent
+      presenceData.state = `Publish Date: ${
+        document.querySelectorAll('.magazine-content-time')[0]?.textContent
+      }`
+    }
+    else if (document.location.pathname.includes('tournament')) {
+      presenceData.details = '賽事專欄'
     }
   }
-  if (presenceData.details == null) {
-    presenceData.startTimestamp = browsingStamp;
-    presenceData.details = "Viewing site:";
-    presenceData.state = "4gamers";
-    presence.setActivity(presenceData);
-  } else {
-    presence.setActivity(presenceData);
+  if (!presenceData.details) {
+    presenceData.startTimestamp = browsingTimestamp
+    presence.setActivity(presenceData)
   }
-});
+  else {
+    presence.setActivity(presenceData)
+  }
+})

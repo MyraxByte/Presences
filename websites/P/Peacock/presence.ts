@@ -1,136 +1,93 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "767402228825980929"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    live: "presence.activity.live",
-    search: "presence.activity.searching"
-  });
+  clientId: '767402228825980929',
+})
+const newStrings = presence.getStrings({
+  play: 'general.playing',
+  pause: 'general.paused',
+  live: 'general.live',
+})
+const elapsed = Math.floor(Date.now() / 1000)
 
-/**
- * Get timestamps
- * @param {Number} videoTime Current video time seconds
- * @param {Number} videoDuration Video duration seconds
- */
-function getTimestamps(
-  videoTime: number,
-  videoDuration: number
-): Array<number> {
-  const startTime = Date.now(),
-    endTime = Math.floor(startTime / 1000) - videoTime + videoDuration;
-  return [Math.floor(startTime / 1000), endTime];
-}
+let strings: Awaited<typeof newStrings>
 
-let elapsed: number = undefined,
-  oldUrl: string = undefined,
-  title;
+presence.on('UpdateData', async () => {
+  let extra = '...'
 
-presence.on("UpdateData", async () => {
-  let video: HTMLVideoElement = null,
-    details = undefined,
-    state = undefined,
-    smallImageKey = undefined,
-    smallImageText = undefined,
-    startTimestamp = undefined,
-    endTimestamp = undefined,
-    extra = "...";
-
-  const href = window.location.href,
-    path = window.location.pathname;
-
-  if (href !== oldUrl) {
-    oldUrl = href;
-    elapsed = Math.floor(Date.now() / 1000);
+  const path = window.location.pathname
+  const presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/P/Peacock/assets/logo.png',
+    startTimestamp: elapsed,
   }
 
-  if (path.includes("/movies/highlights")) {
-    extra = " Movies";
-  } else if (path.includes("/watch/tv/highlights")) {
-    extra = " TV Shows";
-  } else if (path.includes("/watch/kids/highlights")) {
-    extra = " Kids";
-  } else if (path.includes("/watch/sports/highlights")) {
-    extra = " Sports";
-  } else if (path.includes("/watch/latino/highlights")) {
-    extra = " Latino";
-  }
+  strings ??= await newStrings
 
-  // By default, details will be "Browsing..."
-  details = `Browsing${extra}`;
+  if (path.includes('/movies/highlights'))
+    extra = ' Movies'
+  else if (path.includes('/watch/tv/highlights'))
+    extra = ' TV Shows'
+  else if (path.includes('/watch/kids/highlights'))
+    extra = ' Kids'
+  else if (path.includes('/watch/sports/highlights'))
+    extra = ' Sports'
+  else if (path.includes('/watch/latino/highlights'))
+    extra = ' Latino'
 
-  if (path.includes("/watch/search")) {
-    details = `Searching...`;
-  }
+  presenceData.details = `Browsing${extra}`
 
-  startTimestamp = elapsed;
+  if (path.includes('/watch/search'))
+    presenceData.details = 'Searching...'
 
-  if (path.includes("/watch/playback") || path.includes("/watch/asset")) {
-    video = document.querySelector(".video-player-component video");
+  if (path.includes('/watch/playback') || path.includes('/watch/asset')) {
+    const video = document.querySelector<HTMLVideoElement>(
+      '.video-player-component video',
+    )
     if (video) {
-      title =
-        document.querySelector(".playback-header__title") ||
-        document.querySelector(".playback-metadata__container-title");
-      const timestamps = getTimestamps(
-          Math.floor(video.currentTime),
-          Math.floor(video.duration)
-        ),
-        live = timestamps[1] === Infinity,
-        desc =
-          document.querySelector(
-            ".playback-metadata__container-episode-metadata-info"
-          ) ||
-          document.querySelector(".playback-metadata__container-description") ||
-          document.querySelector(
-            ".swiper-slide-active .playlist-item-overlay__container-title"
-          );
+      const title = document.querySelector('.playback-header__title')
+        || document.querySelector('.playback-metadata__container-title')
+      const timestamps = presence.getTimestamps(
+        Math.floor(video.currentTime),
+        Math.floor(video.duration),
+      )
+      const live = timestamps[1] === Infinity
+      const desc = document.querySelector(
+        '.playback-metadata__container-episode-metadata-info',
+      )
+      || document.querySelector('.playback-metadata__container-description')
+      || document.querySelector(
+        '.swiper-slide-active .playlist-item-overlay__container-title',
+      )
 
-      if (desc) {
-        state = desc.textContent;
-      }
+      if (desc)
+        presenceData.state = desc.textContent
+
       if (title) {
-        details = title.textContent;
-        if (path.includes("/watch/playback/playlist")) {
-          details = details + " Playlist";
-        }
+        presenceData.details = title.textContent
+        if (path.includes('/watch/playback/playlist'))
+          presenceData.details += ' Playlist'
       }
 
-      smallImageKey = live ? "live" : video.paused ? "pause" : "play";
-      smallImageText = live
-        ? (await strings).live
+      presenceData.smallImageKey = live
+        ? Assets.Live
         : video.paused
-        ? (await strings).pause
-        : (await strings).play;
-      startTimestamp = live ? elapsed : timestamps[0];
-      endTimestamp = live ? undefined : timestamps[1];
+          ? Assets.Pause
+          : Assets.Play
+      presenceData.smallImageText = live
+        ? strings.live
+        : video.paused
+          ? strings.pause
+          : strings.play
+
+      if (!live)
+        [presenceData.startTimestamp, presenceData.endTimestamp] = timestamps
+
       if (video.paused) {
-        startTimestamp = undefined;
-        endTimestamp = undefined;
+        delete presenceData.startTimestamp
+        delete presenceData.endTimestamp
       }
     }
   }
 
-  const data: PresenceData = {
-    largeImageKey: "peacock",
-    details
-  };
-
-  if (state !== undefined) {
-    data.state = state;
-  }
-  if (smallImageKey !== undefined) {
-    data.smallImageKey = smallImageKey;
-  }
-  if (smallImageText !== undefined) {
-    data.smallImageText = smallImageText;
-  }
-  if (startTimestamp !== undefined) {
-    data.startTimestamp = startTimestamp;
-  }
-  if (endTimestamp !== undefined) {
-    data.endTimestamp = endTimestamp;
-  }
-
-  presence.setActivity(data, video ? !video.paused : true);
-  presence.setTrayTitle(details);
-});
+  presence.setActivity(presenceData)
+})

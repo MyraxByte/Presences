@@ -1,101 +1,209 @@
-var presence = new Presence({
-  clientId: "619286440353726465"
-});
+import { Assets } from 'premid'
 
-var browsingStamp = Math.floor(Date.now() / 1000);
+const presence = new Presence({
+  clientId: '503557087041683458',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-    largeImageKey: "tvtime-logo"
-  };
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/T/TV%20Time/assets/logo.png',
+}
 
-  if (
-    document.location.pathname == "/en" ||
-    document.location.pathname == "/fr" ||
-    document.location.pathname == "/es" ||
-    document.location.pathname == "/it" ||
-    document.location.pathname == "/pt_PT" ||
-    document.location.pathname == "/pt_BR" ||
-    document.location.pathname == "/de"
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: ActivityAssets.Logo,
+    startTimestamp: browsingTimestamp,
+    name: 'TV Time',
+  }
+  const { href, pathname } = document.location
+  const [privacy, buttons, covers] = await Promise.all([
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<boolean>('covers'),
+  ])
+  const title = document.querySelector<HTMLMetaElement>(
+    '[property="og:title"]',
+  )?.content
+  const search = document.querySelector<HTMLInputElement>(
+    '[id="global-search-input"]',
+  )
+  const splitPathname = pathname.split('/')
+
+  if (privacy) {
+    presenceData.details = 'Browsing'
+  }
+  else if (search?.value) {
+    presenceData.details = 'Searching for'
+    presenceData.state = search?.value
+    presenceData.smallImageKey = Assets.Search
+  }
+  else if (
+    pathname === `/${document.querySelector('html')?.getAttribute('lang')}`
   ) {
-    (data.details = "Viewing Watchlist"), (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/calendar")) {
-    (data.details = "Viewing Calendar"), (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/upcoming")) {
-    (data.details = "Viewing Upcoming Episodes"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/profile")) {
-    var user = document
-      .querySelector(".profile-infos h1.name")
-      .textContent.split("Follow")[0];
-    (data.details = "Viewing a User Profile"),
-      (data.state = user),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/account")) {
-    (data.details = "Viewing Account Details"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.includes("/show")) {
-    if (document.location.pathname.includes("/episode/")) {
-      var showname = document.querySelector("div.info-box h3 a").textContent;
-      var shownumber = document.querySelector("div.info-box h1 .episode-label")
-        .textContent;
-      (data.details = "Viewing an Episode"),
-        (data.state = showname + " - " + shownumber);
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    } else if (document.location.pathname.endsWith("/explore")) {
-      (data.details = "Browsing TV Shows"),
-        (data.startTimestamp = browsingStamp);
-      presence.setActivity(data);
-    } else {
-      var show = document.querySelector("div.info-box.heading-info h1")
-        .textContent;
-      (data.details = "Viewing a TV Show"), (data.state = show);
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
-    }
-  } else if (document.location.pathname.includes("/actor/")) {
-    var actor = document.querySelector("div#actor-details div.infos h1")
-      .textContent;
-    (data.details = "Viewing an Actor Profile"), (data.state = actor);
-    data.startTimestamp = browsingStamp;
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/about")) {
-    (data.details = "Viewing the About Page"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/privacy")) {
-    (data.details = "Viewing the Privacy Policy"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/terms")) {
-    (data.details = "Viewing the Terms of Service"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/special-thanks")) {
-    (data.details = "Viewing the Credits"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.endsWith("/podcasts")) {
-    (data.details = "Viewing the Podcasts Page"),
-      (data.startTimestamp = browsingStamp);
-    presence.setActivity(data);
-  } else if (document.location.pathname.includes("/article")) {
-    if (document.location.pathname.endsWith("/articles")) {
-      (data.details = "Browsing Articles"),
-        (data.startTimestamp = browsingStamp);
-      presence.setActivity(data);
-    } else {
-      var article = document.querySelector("div.article h1.page-header")
-        .textContent;
-      (data.details = "Viewing an Article"), (data.state = article);
-      data.startTimestamp = browsingStamp;
-      presence.setActivity(data);
+    presenceData.details = 'Viewing watchlist'
+  }
+  else {
+    switch (splitPathname[2]) {
+      case 'show': {
+        switch (splitPathname[3]) {
+          case 'explore': {
+            if (!document.querySelector('[id="shows-results"]')) {
+              presenceData.details = 'Exploring Shows'
+              presenceData.buttons = [
+                {
+                  label: 'Explore Shows',
+                  url: href,
+                },
+              ]
+            }
+            else {
+              presenceData.details = 'Viewing search results for'
+              presenceData.state = document
+                .querySelector('[id="shows-results"]')
+                ?.textContent
+                ?.split('"')[1]
+            }
+            break
+          }
+          case 'browse': {
+            const hrefSplit = href
+              .split('?')[1]
+              ?.replace('filter=', '')
+              .replace(/_/g, ' ')
+            presenceData.details = 'Viewing shows filtered by'
+            presenceData.state = `${hrefSplit
+              ?.at(0)
+              ?.toUpperCase()}${hrefSplit?.slice(1)}`
+            break
+          }
+          default: {
+            presenceData.details = 'Viewing'
+            presenceData.state = title
+            presenceData.largeImageKey = document
+              .querySelector('img[src*="/poster/"]')
+              ?.getAttribute('src')
+              ?? document
+                .querySelector('[property="og:image"]')
+                ?.getAttribute('content')
+                ?? ActivityAssets.Logo
+            if (title?.match(/S\d*E\d/g)) {
+              presenceData.buttons = [
+                {
+                  label: 'View Episode',
+                  url: href,
+                },
+              ]
+            }
+            else {
+              presenceData.buttons = [
+                {
+                  label: 'View Show',
+                  url: href,
+                },
+              ]
+            }
+            break
+          }
+        }
+        break
+      }
+      case 'actor': {
+        presenceData.details = 'Viewing'
+        presenceData.state = title
+        presenceData.largeImageKey = document
+          .querySelector('[property="og:image"]')
+          ?.getAttribute('content') ?? ActivityAssets.Logo
+        presenceData.buttons = [
+          {
+            label: 'View Actor',
+            url: href,
+          },
+        ]
+        break
+      }
+      case 'upcoming': {
+        presenceData.details = 'Viewing upcoming shows'
+        presenceData.buttons = [
+          {
+            label: 'View Upcoming Shows',
+            url: href,
+          },
+        ]
+        break
+      }
+      case 'explore': {
+        if (!document.querySelector('[id="shows-results"]')) {
+          presenceData.details = 'Exploring Shows'
+          presenceData.buttons = [
+            {
+              label: 'Explore Shows',
+              url: href,
+            },
+          ]
+        }
+        else {
+          presenceData.details = 'Viewing search results for'
+          presenceData.state = document
+            .querySelector('[id="shows-results"]')
+            ?.textContent
+            ?.split('"')[1]
+        }
+        break
+      }
+      case 'user': {
+        switch (splitPathname[4]) {
+          case 'profile': {
+            presenceData.details = `Viewing ${title}'s ${
+              document
+                .querySelector('[class="profile-nav"]')
+                ?.querySelector('[class*="active"]')
+                ?.textContent ?? 'Profile'
+            }`
+            presenceData.largeImageKey = document
+              .querySelector('[class="avatar"]')
+              ?.firstElementChild
+              ?.firstElementChild
+              ?.getAttribute('src')
+              ?? document
+                .querySelector('[class="avatar"]')
+                ?.firstElementChild
+                ?.getAttribute('src')
+            break
+          }
+          case 'calendar': {
+            presenceData.details = 'Viewing Calendar for'
+            presenceData.state = `${
+              document.querySelector('[class="month-label"]')?.textContent
+            } ${
+              document.querySelector('[class="day-number"]')?.textContent
+            } (${document
+              .querySelector('[class="relative-date"]')
+              ?.textContent
+              ?.trim()})`
+            presenceData.buttons = [
+              {
+                label: 'View Calendar',
+                url: href,
+              },
+            ]
+            break
+          }
+          case 'account': {
+            presenceData.details = `Managing ${
+              document.querySelector('[class*="active"]')?.textContent
+            } account settings`
+            break
+          }
+        }
+        break
+      }
     }
   }
-});
+  if (!covers)
+    presenceData.largeImageKey = ActivityAssets.Logo
+  if (!buttons)
+    delete presenceData.buttons
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

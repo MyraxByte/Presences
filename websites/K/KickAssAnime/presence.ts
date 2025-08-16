@@ -1,265 +1,153 @@
-interface LangStrings {
-  play: string;
-  pause: string;
-  viewSeries: string;
-  viewMovie: string;
-  watchEpisode: string;
-}
+import { Assets } from 'premid'
 
 const presence = new Presence({
-    clientId: "802964241179082822"
-  }),
-  getStrings = async (): Promise<LangStrings> => {
-    return presence.getStrings(
-      {
-        play: "general.playing",
-        pause: "general.paused",
-        viewSeries: "general.buttonViewSeries",
-        viewMovie: "general.buttonViewMovie",
-        watchEpisode: "general.buttonViewEpisode"
-      },
-      await presence.getSetting("lang")
-    );
-  },
-  nextEpisodeElement = document.querySelector(
-    "div#sidebar-anime-info > div.border.rounded.mb-3.p-3:nth-child(2) > div:nth-child(1) > a.ka-url-wrapper"
-  ),
-  previousEpisodeElement = document.querySelector(
-    "div#sidebar-anime-info > div.border.rounded.mb-3.p-3:nth-child(2) > div:nth-child(2) > a.ka-url-wrapper"
-  );
-
-let browsingStamp = Math.floor(Date.now() / 1000),
-  video = {
-    duration: 0,
-    currentTime: 0,
-    paused: true
-  },
-  currentTime: number,
-  duration: number,
-  paused = true,
-  lastPlaybackState: boolean = null,
-  playback: boolean,
-  currentAnimeTitle: string,
-  currentAnimeEpisode: string,
-  isMovie: boolean = null,
-  episodeNumber,
-  strings: Promise<LangStrings> = getStrings(),
-  oldLang: string = null;
-
-function checkIfMovie() {
-  nextEpisodeElement == null && previousEpisodeElement == null
-    ? (isMovie = true)
-    : nextEpisodeElement !== null && previousEpisodeElement == null
-    ? (isMovie = false)
-    : nextEpisodeElement == null && previousEpisodeElement !== null
-    ? (isMovie = false)
-    : nextEpisodeElement !== null && previousEpisodeElement !== null
-    ? (isMovie = false)
-    : (isMovie = true);
-
-  !isMovie
-    ? presence
-        .getPageletiable("appData")
-        .then((appData) => {
-          isMovie = appData.anime.types?.find(x => x.name === "Movie") ? true : false;
-        })
-    : presence.info(
-        "Unable to determine if show is a Movie or TV Series.\nYou may be watching an OVA, or this is broken & you need to contact Striker#1337"
-      );
+  clientId: '802964241179082822',
+})
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/K/KickAssAnime/assets/logo.png',
 }
 
-presence.on(
-  "iFrameData",
-  (data: { duration: number; currentTime: number; paused: boolean }) => {
-    video = data;
-    playback = video.duration !== null ? true : false;
-
-    if (playback) {
-      currentTime = video.currentTime;
-      duration = video.duration;
-      paused = video.paused;
-    }
-
-    if (lastPlaybackState != playback) {
-      lastPlaybackState = playback;
-      browsingStamp = Math.floor(Date.now() / 1000);
-    }
-  }
-);
-
-presence.on("UpdateData", async () => {
-  const timestamps = presence.getTimestamps(
-      Math.floor(currentTime),
-      Math.floor(duration)
-    ),
-    presenceData: PresenceData = {
-      largeImageKey: "kaa"
+async function getStrings() {
+  return presence.getStrings(
+    {
+      play: 'general.playing',
+      pause: 'general.paused',
+      viewSeries: 'general.buttonViewSeries',
+      viewMovie: 'general.buttonViewMovie',
+      watchEpisode: 'general.buttonViewEpisode',
+      view: 'general.view',
+      searching: 'general.searchFor',
+      episode: 'general.episode',
+      browse: 'general.browsing',
     },
-    buttons = await presence.getSetting("buttons"),
-    newLang = await presence.getSetting("lang");
 
-  presenceData.startTimestamp = browsingStamp;
+  )
+}
 
-  if (!oldLang) {
-    oldLang = newLang;
-  } else if (oldLang !== newLang) {
-    oldLang = newLang;
-    strings = getStrings();
-  }
+let browsingTimestamp = Math.floor(Date.now() / 1000)
+let video = {
+  exists: false,
+  duration: 0,
+  currentTime: 0,
+  paused: true,
+}
+let lastPlaybackState: boolean = false
+let playback: boolean
+let strings: Awaited<ReturnType<typeof getStrings>>
+let oldLang: string | null = null
 
-  if (
-    document.location.pathname.includes("/anime/") &&
-    document.location.pathname.includes("/episode")
-  ) {
-    checkIfMovie();
-    if (playback == true && !isNaN(duration)) {
-      presenceData.smallImageKey = paused ? "pause" : "play";
-      presenceData.smallImageText = paused
-        ? (await strings).pause
-        : (await strings).play;
-      presenceData.startTimestamp = timestamps[0];
-      presenceData.endTimestamp = timestamps[1];
-      currentAnimeTitle = document.querySelector("a.ka-url-wrapper")
-        .textContent;
-      currentAnimeEpisode = document.location.pathname
-        .split("/")[3]
-        .split("-")[1];
-      if (!isMovie) {
-        if (currentAnimeEpisode[0] == "0") {
-          episodeNumber = currentAnimeEpisode.replace("0", "");
-        } else {
-          episodeNumber = currentAnimeEpisode;
-        }
-        currentAnimeEpisode = `Episode ${episodeNumber}`;
+presence.on(
+  'iFrameData',
+  (data: unknown) => {
+    video = data as typeof video
+    playback = video.duration !== null
 
-        if (buttons) {
-          presenceData.buttons = [
-            {
-              label: (await strings).watchEpisode,
-              url: document.URL
-            },
-            {
-              label: (await strings).viewSeries,
-              url: document.URL.replace(document.URL.split("/")[5], "")
-            }
-          ];
-        }
-      } else {
-        currentAnimeEpisode = "Movie";
-
-        if (buttons) {
-          presenceData.buttons = [
-            {
-              label: (await strings).watchEpisode,
-              url: document.URL
-            },
-            {
-              label: (await strings).viewMovie,
-              url: document.URL.replace(document.URL.split("/")[5], "")
-            }
-          ];
-        }
-      }
-
-      presenceData.details = `${currentAnimeTitle}`;
-      presenceData.state = `${currentAnimeEpisode}`;
-
-      if (paused) {
-        delete presenceData.startTimestamp;
-        delete presenceData.endTimestamp;
-      }
-    } else {
-      currentAnimeTitle = document.querySelector("a.ka-url-wrapper")
-        .textContent;
-      currentAnimeEpisode = document.location.pathname
-        .split("/")[3]
-        .split("-")[1];
-      if (!isMovie) {
-        if (currentAnimeEpisode[0] == "0") {
-          episodeNumber = currentAnimeEpisode.replace("0", "");
-        } else {
-          episodeNumber = currentAnimeEpisode;
-        }
-        currentAnimeEpisode = `Episode ${episodeNumber}`;
-
-        if (buttons) {
-          presenceData.buttons = [
-            {
-              label: (await strings).watchEpisode,
-              url: document.URL
-            },
-            {
-              label: (await strings).viewSeries,
-              url: document.URL.replace(document.URL.split("/")[5], "")
-            }
-          ];
-        }
-      } else {
-        currentAnimeEpisode = "Movie";
-
-        if (buttons) {
-          presenceData.buttons = [
-            {
-              label: (await strings).watchEpisode,
-              url: document.URL
-            },
-            {
-              label: (await strings).viewMovie,
-              url: document.URL.replace(document.URL.split("/")[5], "")
-            }
-          ];
-        }
-      }
-
-      presenceData.details = `${currentAnimeTitle}`;
-      presenceData.state = `${currentAnimeEpisode}`;
-
-      if (paused) {
-        delete presenceData.startTimestamp;
-        delete presenceData.endTimestamp;
-      }
+    if (lastPlaybackState !== playback) {
+      lastPlaybackState = playback
+      browsingTimestamp = Math.floor(Date.now() / 1000)
     }
-  } else if (
-    document.location.pathname.includes("/anime/") &&
-    document.location.pathname.includes("/episode") == false
-  ) {
-    currentAnimeTitle = document.querySelector("h1.title").textContent;
-    presenceData.details = "Looking at:";
-    presenceData.state = `${currentAnimeTitle}`;
-    presenceData.smallImageKey = "searching";
+  },
+)
 
-    if (buttons) {
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: ActivityAssets.Logo,
+    startTimestamp: browsingTimestamp,
+  }
+  const [buttons, newLang, cover] = await Promise.all([
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<string>('lang'),
+    presence.getSetting<boolean>('episode-cover'),
+  ])
+  const { pathname, hostname, href } = document.location
+  const fullUrl = (string: string) =>
+    string ? `https://${hostname}${string}` : ActivityAssets.Logo
+
+  if (oldLang !== newLang) {
+    oldLang = newLang
+    strings = await getStrings()
+  }
+  switch (true) {
+    case video.exists: {
+      if (playback && !Number.isNaN(video.duration)) {
+        presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+        presenceData.smallImageText = video.paused ? 'Paused' : 'Playing'
+        if (!video.paused) {
+          [presenceData.startTimestamp, presenceData.endTimestamp] = presence.getTimestamps(video.currentTime, video.duration)
+        }
+        presenceData.buttons = [
+          {
+            label: 'Watch Video',
+            url: href,
+          },
+        ]
+      }
+      delete presenceData.startTimestamp
+      presenceData.details = document
+        .querySelector('[name="og:title"]')
+        ?.getAttribute('content')
+        ?.split('-')[1]
+        ?? document
+          .evaluate(
+            '//script[contains(., \'layout:\')]',
+            document,
+            null,
+            XPathResult.ANY_TYPE,
+            null,
+          )
+          ?.iterateNext()
+          ?.textContent
+          ?.match(/title_en:".{1,256}",/g)?.[0]
+          ?.replace(/(title_en:")|(",)/g, '')
+      presenceData.state = document
+        .querySelector('[name="og:title"]')
+        ?.getAttribute('content')
+        ?.split('-')[2]
+      presenceData.largeImageKey = fullUrl(
+        document.querySelector('[name="og:image"]')?.getAttribute('content') ?? '',
+      )
       presenceData.buttons = [
         {
-          label: (await strings).viewSeries,
-          url: document.URL
-        }
-      ];
+          label: strings.viewSeries,
+          url: href,
+        },
+      ]
+      break
     }
-  } else if (document.location.pathname.includes("anime-list")) {
-    presenceData.details = "Looking at:";
-    presenceData.state = "Anime List";
-    presenceData.smallImageKey = "searching";
-  } else if (document.location.pathname.includes("new-season")) {
-    presenceData.details = "Looking at:";
-    presenceData.state = "New Season";
-    presenceData.smallImageKey = "searching";
-  } else if (document.location.pathname.includes("favorites")) {
-    presenceData.details = "Looking at:";
-    presenceData.state = "Their Favorites";
-    presenceData.smallImageKey = "searching";
-  } else if (document.location.pathname.includes("watched")) {
-    presenceData.details = "Looking at:";
-    presenceData.state = "Watch History";
-    presenceData.smallImageKey = "searching";
-  } else if (document.location.pathname == "/") {
-    presenceData.details = "Looking at:";
-    presenceData.state = "Home Page";
-    presenceData.smallImageKey = "searching";
-  } else {
-    presenceData.details = "Looking at:";
-    presenceData.state = "An Unsupported Page";
+    case pathname.includes('schedule'): {
+      presenceData.details = strings.view
+      presenceData.state = 'The schedule'
+      break
+    }
+    case pathname.includes('recent'): {
+      presenceData.details = strings.view
+      presenceData.state = 'Recently added anime'
+      break
+    }
+    case pathname.includes('popular'): {
+      presenceData.details = strings.view
+      presenceData.state = 'Popular anime'
+      break
+    }
+    case pathname.includes('anime'): {
+      presenceData.details = strings.view
+      presenceData.state = 'All anime'
+      break
+    }
+    case pathname.includes('trending'): {
+      presenceData.details = strings.view
+      presenceData.state = 'Trending anime'
+      break
+    }
+    default: {
+      presenceData.details = strings.browse
+      break
+    }
   }
 
-  presence.setActivity(presenceData);
-});
+  if (!buttons && presenceData.buttons)
+    delete presenceData.buttons
+  if (!cover && presenceData.largeImageKey !== ActivityAssets.Logo)
+    presenceData.largeImageKey = ActivityAssets.Logo
+  presence.setActivity(presenceData)
+})

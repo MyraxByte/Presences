@@ -1,26 +1,28 @@
 const presence = new Presence({
-    clientId: "808757125747966032"
-  }),
-  elapsed = Math.floor(Date.now() / 1000);
+  clientId: '808757125747966032',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-      largeImageKey: "logo"
-    },
-    gameLink = document.location.pathname.split("/")[1].match(/^\d/)
-      ? true
-      : false;
-  if (gameLink) {
-    const user = document.querySelector("div.user.proprio .dados span")
-        .textContent,
-      points = document.querySelector("div.user.proprio .dados pre")
-        .textContent,
-      lobby = document.querySelector("title").innerText;
-    data.details = user + " - " + points.split("pontos")[0].trim() + " points";
-    data.state = "Lobby: " + lobby.split("-")[0];
-    data.startTimestamp = elapsed;
-  } else {
-    data.details = "Not in-game";
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/G/Gartic.com.br/assets/logo.png',
+    startTimestamp: browsingTimestamp,
   }
-  presence.setActivity(data);
-});
+  if (document.location.pathname.split('/')[1]?.match(/^\d/)) {
+    presenceData.details = `${
+      document.querySelector('div.user.proprio .dados span')?.textContent
+    } - ${document
+      .querySelector('div.user.proprio .dados pre')
+      ?.textContent
+      ?.split('pontos')[0]
+      ?.trim()} points`
+    presenceData.state = `Lobby: ${
+      document.querySelector('title')?.textContent?.split('-')[0]
+    }`
+  }
+  else {
+    presenceData.details = 'Not in-game'
+  }
+
+  presence.setActivity(presenceData)
+})

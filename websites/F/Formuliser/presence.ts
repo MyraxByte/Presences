@@ -1,30 +1,23 @@
 const presence = new Presence({
-  clientId: "729279760596729858"
-});
+  clientId: '729279760596729858',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-let formula: HTMLInputElement, formulaName: HTMLElement;
-const startStamp = Math.floor(Date.now() / 1000);
-
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-    largeImageKey: "logo"
-  };
-
-  formula = document.getElementById("formula") as HTMLInputElement;
-
-  formulaName =
-    document.querySelector("span#elements-body > details > summary") ??
-    document.querySelector("span#elements-body");
-
-  presenceData.details = formula.value;
-  presenceData.state = formulaName.innerText;
-
-  presenceData.startTimestamp = startStamp;
-
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/F/Formuliser/assets/logo.png',
+    startTimestamp: browsingTimestamp,
   }
-});
+
+  const formula = document.querySelector('#formula') as HTMLInputElement
+
+  const formulaName = document.querySelector('span#elements-body > details > summary')
+    ?? document.querySelector('span#elements-body')
+
+  presenceData.details = formula.value
+  presenceData.state = formulaName?.textContent
+
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

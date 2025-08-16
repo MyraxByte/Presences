@@ -1,20 +1,21 @@
 const presence = new Presence({
-  clientId: "630783537221468182"
-});
+  clientId: '630783537221468182',
+})
 
-presence.on("UpdateData", () => {
+presence.on('UpdateData', () => {
   const presenceData: PresenceData = {
-    largeImageKey: "slitherlogo"
-  };
-
-  if (document.querySelector('[style="opacity: .8; font-weight: bold;"]')) {
-    const length = document.querySelector(
-      '[style="opacity: .8; font-weight: bold;"]'
-    ).innerHTML;
-    const rank = document.querySelector('[style="opacity: .35;"]').innerHTML;
-    presenceData.details = "Length: " + length;
-    presenceData.state = "Rank: " + rank;
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/S/Slither.io/assets/logo.png',
   }
 
-  presence.setActivity(presenceData);
-});
+  if (document.querySelector('[style="opacity: .8; font-weight: bold;"]')) {
+    presenceData.details = `Length: ${
+      document.querySelector('[style="opacity: .8; font-weight: bold;"]')!
+        .textContent
+    }`
+    presenceData.state = `Rank: ${
+      document.querySelector('[style="opacity: .35;"]')?.textContent
+    }`
+  }
+
+  presence.setActivity(presenceData)
+})

@@ -1,38 +1,80 @@
-var presence = new Presence({
-    clientId: "619768959717343242"
-  }),
-  strings = presence.getStrings({
-    live: "presence.activity.live"
-  });
+import { Assets } from 'premid'
 
-var elapsed = Math.floor(Date.now() / 1000);
+const presence = new Presence({
+  clientId: '503557087041683458',
+})
+const elapsed = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-    largeImageKey: "qdance-logo"
-  };
+async function getStrings() {
+  return presence.getStrings(
+    {
+      browse: 'general.browsing',
+      live: 'general.live',
+    },
 
-  var radioCheck = document.querySelector(
-    "svg.audioplayer-controls__icon--play"
   )
-    ? false
-    : true;
-  if (radioCheck) {
-    var song = document.querySelector(".audioplayer-nowplaying__track")
-      .textContent;
-    var artist = document.querySelector(".audioplayer-nowplaying__artist")
-      .textContent;
-    (data.details = song),
-      (data.state = artist),
-      (data.smallImageKey = "live"),
-      (data.smallImageText = (await strings).live);
-    if (elapsed === null) {
-      elapsed = Math.floor(Date.now() / 1000);
-    }
-    data.startTimestamp = elapsed;
-    presence.setActivity(data);
-  } else {
-    elapsed = null;
-    presence.clearActivity();
+}
+
+let strings: Awaited<ReturnType<typeof getStrings>>
+let oldLang: string | null = null
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/Q/Q-dance/assets/logo.png',
+    name: 'Q-dance',
   }
-});
+  const [newLang, privacy, buttons, covers] = await Promise.all([
+    presence.getSetting<string>('lang').catch(() => 'en'),
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<boolean>('covers'),
+  ])
+  const { href } = document.location
+  if (oldLang !== newLang || !strings) {
+    oldLang = newLang
+    strings = await getStrings()
+  }
+  if (privacy) {
+    presenceData.details = 'Browsing'
+  }
+  else if (!document.querySelector('svg.audioplayer-controls__icon--play')) {
+    presenceData.details = document.querySelector(
+      '.audioplayer-nowplaying__track',
+    )?.textContent
+    presenceData.state = document.querySelector(
+      '.audioplayer-nowplaying__artist',
+    )?.textContent
+    presenceData.smallImageKey = Assets.Live
+    presenceData.smallImageText = strings.live
+    presenceData.largeImageKey = document.querySelector<HTMLImageElement>(
+      'div.audioplayer-nowplaying__image > img',
+    )?.src ?? 'https://cdn.rcd.gg/PreMiD/websites/Q/Q-dance/assets/logo.png'
+    presenceData.startTimestamp = elapsed
+    presenceData.buttons = [
+      {
+        label: 'Tune In Live',
+        url: href,
+      },
+    ]
+  }
+  else {
+    presenceData.buttons = [
+      {
+        label: 'Browse',
+        url: href,
+      },
+    ]
+    presenceData.details = `${strings.browse} ${
+      document.querySelector(
+        '[class="nav-item__link router-link-exact-active router-link-active active"]',
+      )?.textContent ?? ''
+    }`
+  }
+  if (!buttons)
+    delete presenceData.buttons
+  if (!covers) {
+    presenceData.largeImageKey = 'https://cdn.rcd.gg/PreMiD/websites/Q/Q-dance/assets/logo.png'
+  }
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

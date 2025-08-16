@@ -1,73 +1,100 @@
+import { ActivityType, Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "760586876854992926"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    browsing: "presence.activity.browsing"
-  });
+  clientId: '721740741570986016',
+})
+const strings = presence.getStrings({
+  paused: 'general.paused',
+  browse: 'general.browsing',
+})
 
-function getTime(list: string[]): number {
-  let ret = 0;
-  for (let index = list.length - 1; index >= 0; index--) {
-    ret += parseInt(list[index]) * 60 ** index;
+function updateLogo() {
+  const trackCoverartDiv = document.querySelector('.track-coverart')
+  if (trackCoverartDiv) {
+    const style = trackCoverartDiv.getAttribute('style')
+    if (style) {
+      const match = decodeURIComponent(style).match(/url\("([^"]+)"\)/)
+      if (match && match[1]) {
+        let url = match[1]
+        url = url.replace(/&size=\d+/, '')
+        return url
+      }
+    }
   }
-  return ret;
+  return 'https://cdn.rcd.gg/PreMiD/websites/A/Anghami/assets/logo.png'
 }
 
-function getTimestamps(
-  audioTime: string,
-  audioDuration: string
-): Array<number> {
-  const aT = getTime(audioTime.split(":").reverse()),
-    aD = getTime(audioDuration.split(":").reverse()),
-    endTime = Math.floor(Date.now() / 1000) - aT + aD;
+function calculateEndTimestamp(
+  startTime: string,
+  remainingTime: string,
+): string {
+  const [startMinutes, startSeconds] = startTime.trim().split(':').map(Number)
+  const [remainingMinutes, remainingSeconds] = remainingTime
+    .trim()
+    .split(':')
+    .map(Number)
+  const endTotalSeconds = (startMinutes ?? 0) * 60
+    + (startSeconds ?? 0)
+    + (remainingMinutes ?? 0) * 60
+    + (remainingSeconds ?? 0)
 
-  return [Math.floor(Date.now() / 1000), endTime];
+  let endMinutes = Math.floor(endTotalSeconds / 60)
+  let endSeconds = endTotalSeconds % 60
+
+  if (endSeconds === 60) {
+    endSeconds = 0
+    endMinutes++
+  }
+  return `${endMinutes}:${endSeconds.toString().padStart(2, '0')}`
 }
 
-presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-      largeImageKey: "anlg"
-    },
-    playback: boolean = document.querySelector("anghami-player") != null;
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: updateLogo(),
+    type: ActivityType.Listening,
+  }
+  const playback = !!document.querySelector('anghami-player')
 
   if (playback) {
-    const selectors: NodeListOf<Node> = document.querySelectorAll(
-        ".duration-text"
-      ),
-      current: string =
-        (selectors[0] && selectors[0].textContent.trim()) || "0:0",
-      length: string =
-        (selectors[1] && selectors[1].textContent.trim()) || "0:0",
-      timestamps = getTimestamps(current, length),
-      playing: boolean =
-        document.querySelector("anghami-player anghami-icon.icon.pause") !=
-        null;
-    let selector: Node = document.querySelector(
-      "anghami-player .action-title .trim"
-    );
-    data.details = (selector && selector.textContent) || null;
-    selector = document.querySelector("anghami-player .action-artist .trim");
-    data.state = (selector && selector.textContent) || null;
-
-    data.smallImageKey = playing ? "play" : "pause";
-    data.smallImageText = playing
-      ? (await strings).play
-      : (await strings).pause;
-    data.startTimestamp = timestamps[0];
-    data.endTimestamp = timestamps[1];
+    const selectors: NodeListOf<Node> = document.querySelectorAll('.duration-text')
+    const playing: boolean = document.querySelector('anghami-player svg[title=\'pause-shape\']')
+      !== null
+    let selector: Node | null = document.querySelector(
+      'anghami-player .action-title .trim',
+    )
+    presenceData.details = (selector && selector.textContent) || null
+    selector = document.querySelector('anghami-player .action-artist .trim')
+    presenceData.state = (selector && selector.textContent) || null
 
     if (!playing) {
-      delete data.startTimestamp;
-      delete data.endTimestamp;
+      presenceData.smallImageKey = Assets.Pause
+      presenceData.smallImageText = 'Paused'
+    }
+    const duration = presence.timestampFromFormat(
+      calculateEndTimestamp(
+        selectors[0]?.textContent ?? '',
+        selectors[1]?.textContent ?? '',
+      ),
+    )
+    const timestamps = presence.getTimestamps(
+      presence.timestampFromFormat(selectors[0]?.textContent ?? ''),
+      duration,
+    )
+
+    presenceData.startTimestamp = timestamps[0]
+    presenceData.endTimestamp = timestamps[1]
+
+    if (!playing) {
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
     }
 
-    presence.setActivity(data, playback);
-  } else {
-    data.details = (await strings).browsing;
-    data.smallImageKey = "search";
-    data.smallImageText = (await strings).browsing;
-    presence.setActivity(data);
+    presence.setActivity(presenceData)
   }
-});
+  else {
+    presenceData.details = (await strings).browse
+    presenceData.smallImageKey = Assets.Search
+    presenceData.smallImageText = (await strings).browse
+    presence.setActivity(presenceData)
+  }
+})

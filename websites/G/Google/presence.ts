@@ -1,133 +1,161 @@
-var presence = new Presence({
-  clientId: "612704158826496028"
-});
+import { Assets } from 'premid'
 
-var browsingStamp = Math.floor(Date.now() / 1000);
+const presence = new Presence({
+  clientId: '612704158826496028',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-var doodleTitle: any;
+enum ActivityAssets {
+  chartUp = 'https://cdn.rcd.gg/PreMiD/websites/G/Google/assets/0.png',
+  chartDown = 'https://cdn.rcd.gg/PreMiD/websites/G/Google/assets/1.png',
+}
 
-var homepageImage: any;
-
-var resultsInfo: any, searchTab: any;
-
-var pageInput: any, homepageInput;
-
-homepageInput = document.querySelector(
-  "#tsf > div:nth-child(2) > div.A8SBwf > div.RNNXgb > div > div.a4bIc > input"
-);
-
-homepageImage = document.querySelector("#hplogo");
-
-var imgInput: any = document.querySelector("#REsRA");
-
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-    largeImageKey: "lg"
-  };
-
-  if ((homepageInput && homepageImage) || !document.location.pathname) {
-    presenceData.state = "Home";
-
-    presenceData.startTimestamp = browsingStamp;
-
-    delete presenceData.details;
-  } else if (document.location.pathname.startsWith("/doodles/")) {
-    var searchURL = new URL(document.location.href);
-
-    var doodleResult = searchURL.searchParams.get("q");
-
-    doodleTitle = document.querySelector("#title-card > div > h2");
-
-    if (document.location.pathname.includes("/about")) {
-      presenceData.details = "Doodles";
-
-      presenceData.state = "About";
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (doodleTitle != null) {
-      presenceData.details = "Viewing a doodle:";
-
-      presenceData.state = doodleTitle.innerText;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (doodleResult && document.location.pathname == "/doodles/") {
-      presenceData.details = "Searching for a doodle:";
-
-      presenceData.state = doodleResult;
-
-      presenceData.startTimestamp = browsingStamp;
-
-      presenceData.smallImageKey = "search";
-    } else {
-      presenceData.details = "Current page:";
-
-      presenceData.state = "Doodles";
-
-      presenceData.startTimestamp = browsingStamp;
-    }
-  } else if (document.location.pathname.startsWith("/search")) {
-    searchURL = new URL(document.location.href);
-
-    searchTab = searchURL.searchParams.get("tbm");
-
-    resultsInfo = document.querySelector("#result-stats");
-
-    presenceData.smallImageKey = "search";
-
-    if (!searchTab) {
-      presenceData.details = "Searching for " + homepageInput.value;
-
-      presenceData.state = resultsInfo.textContent;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (searchTab == "isch") {
-      presenceData.details = "Google Images";
-
-      presenceData.state = "Searching for " + imgInput.value;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (searchTab == "vid") {
-      pageInput = document.querySelector("#lst-ib");
-
-      presenceData.details = "Google Videos";
-
-      presenceData.state = "Searching for " + pageInput.value;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (searchTab == "nws") {
-      pageInput = document.querySelector("#lst-ib");
-
-      presenceData.details = "Google News";
-
-      presenceData.state = "Searching for " + pageInput.value;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (searchTab == "bks") {
-      pageInput = document.querySelector("#lst-ib");
-
-      presenceData.details = "Google Books";
-
-      presenceData.state = "Searching for " + pageInput.value;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (searchTab == "fin") {
-      pageInput = document.querySelector("#lst-ib");
-
-      presenceData.details = "Google Finance";
-
-      presenceData.state = "Searching for " + pageInput.value;
-
-      presenceData.startTimestamp = browsingStamp;
-    } else if (searchTab == "pers") {
-      pageInput = document.querySelector("#lst-ib");
-
-      presenceData.details = "Google Personal";
-
-      presenceData.state = "Searching for " + pageInput.value;
-
-      presenceData.startTimestamp = browsingStamp;
-    }
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/G/Google/assets/logo.png',
+    startTimestamp: browsingTimestamp,
   }
 
-  presence.setActivity(presenceData);
-});
+  const pathArr = document.location.pathname.split('/')
+  const searchInput = document.querySelector<HTMLInputElement>(`[name='q']`)
+  const homepageImage = document.querySelector<HTMLImageElement>('img.lnXdpd')
+  const [privacy, showSmallImages] = await Promise.all([
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('showSmallImages'),
+  ])
+
+  if ((searchInput && homepageImage) || !document.location.pathname) {
+    presenceData.details = 'Home'
+  }
+  else if (document.location.pathname.startsWith('/finance')) {
+    presenceData.name = 'Google Finance'
+    presenceData.details = 'Home'
+
+    switch (pathArr[2]) {
+      case 'quote': {
+        const marketPourcentage = document.querySelector(`c-wiz[style*='visibility: visible'] span.NydbP.tnNmPe`)?.getAttribute('aria-label')
+        const marketResult = document.querySelector(`c-wiz[style*='visibility: visible'] span.P2Luy.ZYVHBb`)?.textContent
+        presenceData.details = !privacy ? `Viewing market : ${document.querySelector(`c-wiz[style*='visibility: visible'] div.zzDege`)?.textContent}` : 'Browsing through markets'
+        if (marketResult?.startsWith('+') && !privacy) {
+          presenceData.smallImageKey = ActivityAssets.chartUp
+          presenceData.smallImageText = `${marketPourcentage} • ${marketResult}`
+        }
+        else if (marketResult?.startsWith('-') && !privacy) {
+          presenceData.smallImageKey = ActivityAssets.chartDown
+          presenceData.smallImageText = `${marketPourcentage} • ${marketResult}`
+        }
+        break
+      }
+      case 'markets': {
+        presenceData.details = `Explore market trends : ${document.querySelector(`c-wiz[style*='visibility: visible'] a.GqNdIe.GqNdIe-YySNWc`)?.textContent}`
+
+        break
+      }
+      case 'portfolio': {
+        const portfolioType = document.querySelector(`c-wiz[style*='visibility: visible'] div.xsHABd span.zMQeMc`)?.textContent
+        const portfolioName = document.querySelector(`c-wiz[style*='visibility: visible'] div.xsHABd span.sZflkf`)?.textContent
+        if (portfolioType === 'insert_chart') {
+          presenceData.details = !privacy ? `Explore Portfolio : ${portfolioName}` : 'Explore their Portfolios'
+        }
+        else if (portfolioType === 'format_list_bulleted') {
+          presenceData.details = !privacy ? `Explore Watchlist : ${portfolioName}` : 'Explore their Watchlists'
+        }
+
+        break
+      }
+    }
+  }
+  else if (document.location.pathname.startsWith('/search')) {
+    const urlParams = new URL(document.location.href).searchParams
+    const searchTab = urlParams?.get('tbm') || urlParams?.get('udm')
+    presenceData.smallImageKey = Assets.Search
+
+    if (!searchTab) {
+      presenceData.details = `Searching for : ${searchInput?.value}`
+      presenceData.state = document.querySelector('#result-stats')?.textContent
+    }
+    else {
+      switch (searchTab) {
+        case '2': {
+          presenceData.name = 'Google Images'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '7': {
+          presenceData.name = 'Google Videos'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case 'nws': {
+          presenceData.name = 'Google News'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '36': {
+          presenceData.name = 'Google Books'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case 'pers': {
+          presenceData.name = 'Google Personal'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '3': {
+          presenceData.name = 'Google Products'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '18': {
+          presenceData.name = 'Google Forums'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '1': {
+          presenceData.name = 'Google Places'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '11': {
+          presenceData.name = 'Google Places sites'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '14': {
+          presenceData.name = 'Google Web'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+        case '5': {
+          presenceData.name = 'Google Lodging'
+          presenceData.details = `Searching for : ${searchInput?.value}`
+
+          break
+        }
+      }
+    }
+    if (privacy) {
+      delete presenceData.state
+      if (
+        typeof presenceData.details === 'string'
+        && presenceData.details.includes('Searching for :')
+      ) {
+        presenceData.details = 'Searching'
+        presenceData.name = 'Google'
+      }
+    }
+  }
+  if (!showSmallImages)
+    delete presenceData.smallImageKey
+  presence.setActivity(presenceData)
+})

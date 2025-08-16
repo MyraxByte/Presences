@@ -1,69 +1,113 @@
-var presence = new Presence({
-    clientId: "621835880474345473"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused"
-  });
+import { Assets } from 'premid'
 
-/**
- * Get Timestamps
- * @param {Number} videoTime Current video time seconds
- * @param {Number} videoDuration Video duration seconds
- */
-function getTimestamps(
-  videoTime: number,
-  videoDuration: number
-): Array<number> {
-  var startTime = Date.now();
-  var endTime = Math.floor(startTime / 1000) - videoTime + videoDuration;
-  return [Math.floor(startTime / 1000), endTime];
+const presence = new Presence({
+  clientId: '503557087041683458',
+})
+const browingTimestamp = Math.floor(Date.now() / 1000)
+async function getStrings() {
+  return presence.getStrings(
+    {
+      play: 'general.playing',
+      paused: 'general.paused',
+      browse: 'general.browsing',
+      live: 'general.live',
+      buttonWatchVideo: 'general.buttonWatchVideo',
+      buttonWatchLive: 'general.buttonWatchStream',
+      viewCategory: 'general.viewCategory',
+      search: 'general.searchFor',
+    },
+
+  )
 }
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/T/Tubi/assets/logo.png',
+}
+let strings: Awaited<ReturnType<typeof getStrings>>
+let oldLang: string | null = null
 
-var subtitle;
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: ActivityAssets.Logo,
+    name: 'Tubi',
+  }
+  const video = document.querySelector<HTMLVideoElement>('video')
+  const search = document.querySelector<HTMLInputElement>('[type="search"]')
+  const { href, pathname } = document.location
+  const [newLang, privacy, buttons, covers] = await Promise.all([
+    presence.getSetting<string>('lang').catch(() => 'en'),
+    presence.getSetting<boolean>('privacy'),
+    presence.getSetting<boolean>('buttons'),
+    presence.getSetting<boolean>('covers'),
+  ])
+  if (oldLang !== newLang || !strings) {
+    oldLang = newLang
+    strings = await getStrings()
+  }
 
-presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-    largeImageKey: "tubi-logo"
-  };
-
-  var video: HTMLVideoElement = document.querySelector(
-    "video#videoPlayerComponent"
-  );
-  if (video && !isNaN(video.duration)) {
-    var title = document.querySelector("h1._1PDoZ._1nW6s").textContent;
-    var timestamps = getTimestamps(
-      Math.floor(video.currentTime),
-      Math.floor(video.duration)
-    );
-    var subtitleCheck = document.querySelector("h2._29XQF._24NNJ")
-      ? false
-      : true;
-
-    if (subtitleCheck) {
-      subtitle = "Movie";
-    } else {
-      subtitle = document.querySelector("h2._29XQF._24NNJ").textContent;
+  if (privacy) {
+    presenceData.details = strings.browse
+    return
+  }
+  if (search?.value) {
+    presenceData.details = strings.search
+    presenceData.state = search.value
+    presenceData.smallImageKey = Assets.Search
+  }
+  else if (pathname.includes('/category/')) {
+    presenceData.details = strings.viewCategory
+    presenceData.state = document.querySelector<HTMLMetaElement>(
+      '[property="og:title"]',
+    )?.content
+  }
+  else if (video && !Number.isNaN(video.duration)) {
+    presenceData.largeImageKey = document.querySelector<HTMLMetaElement>(
+      'meta[property="og:image"]',
+    )?.content
+    presenceData.details = document.querySelector<HTMLMetaElement>(
+      'meta[property="og:title"]',
+    )?.content
+    if (!pathname.includes('live')) {
+      presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+      presenceData.smallImageText = video.paused
+        ? strings.paused
+        : strings.play;
+      [presenceData.startTimestamp, presenceData.endTimestamp] = presence.getTimestamps(
+        Math.floor(video.currentTime),
+        Math.floor(video.duration),
+      )
+      presenceData.buttons = [
+        {
+          label: strings.buttonWatchVideo,
+          url: href,
+        },
+      ]
     }
-
-    (data.details = title), (data.state = subtitle);
-    (data.smallImageKey = video.paused ? "pause" : "play"),
-      (data.smallImageText = video.paused
-        ? (await strings).pause
-        : (await strings).play),
-      (data.startTimestamp = timestamps[0]),
-      (data.endTimestamp = timestamps[1]);
+    else {
+      presenceData.buttons = [
+        {
+          label: strings.buttonWatchLive,
+          url: href,
+        },
+      ]
+      presenceData.smallImageText = strings.live
+      presenceData.smallImageKey = Assets.Live
+    }
+    presenceData.startTimestamp = browingTimestamp
 
     if (video.paused) {
-      delete data.startTimestamp;
-      delete data.endTimestamp;
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
     }
-
-    if (title !== null && subtitle !== null) {
-      presence.setActivity(data, !video.paused);
-    }
-  } else {
-    data.details = "Browsing...";
-    presence.setActivity(data);
   }
-});
+  else {
+    presenceData.details = strings.browse
+  }
+
+  if (!buttons)
+    delete presenceData.buttons
+  if (!covers)
+    presenceData.largeImageKey = ActivityAssets.Logo
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

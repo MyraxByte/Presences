@@ -1,100 +1,92 @@
 const presence = new Presence({
-    clientId: "630478614894477337"
-  }),
-  browsingStamp = Math.floor(Date.now() / 1000);
+  clientId: '630478614894477337',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-let title: string;
+let title: string
 
 async function getStrings() {
   return presence.getStrings(
     {
-      editingDoc: "google docs.editingDoc",
-      viewingDoc: "google docs.viewingDoc",
-      browsingDoc: "google docs.browsingDoc",
-      editingForm: "google docs.editingForm",
-      viewingForm: "google docs.viewingForm",
-      browsingForm: "google docs.browsingForm",
-      editingSheet: "google docs.editingSheet",
-      viewingSheet: "google docs.viewingSheet",
-      browsingSheet: "google docs.browsingSheet",
-      editingPresentation: "google docs.editingPresentation",
-      browsingPresentation: "google docs.browsingPresentation",
-      vieiwngPresentation: "google docs.viewingPresentation"
+      editingDoc: 'googledocs.editingDoc',
+      viewingDoc: 'googledocs.viewingDoc',
+      browsingDoc: 'googledocs.browsingDoc',
+      editingForm: 'googledocs.editingForm',
+      viewingForm: 'googledocs.viewingForm',
+      browsingForm: 'googledocs.browsingForm',
+      editingSheet: 'googledocs.editingSheet',
+      viewingSheet: 'googledocs.viewingSheet',
+      browsingSheet: 'googledocs.browsingSheet',
+      editingPresentation: 'googledocs.editingPresentation',
+      browsingPresentation: 'googledocs.browsingPresentation',
+      vieiwngPresentation: 'googledocs.viewingPresentation',
     },
-    await presence.getSetting("lang")
-  );
+  )
 }
 
-let strings = getStrings(),
-  oldLang: string = null;
+enum ActivityAssets {
+  DocsLogo = 'https://cdn.rcd.gg/PreMiD/websites/G/Google%20Docs/assets/0.png',
+  FormsLogo = 'https://cdn.rcd.gg/PreMiD/websites/G/Google%20Docs/assets/1.png',
+  SheetsLogo = 'https://cdn.rcd.gg/PreMiD/websites/G/Google%20Docs/assets/2.png',
+  SlidesLogo = 'https://cdn.rcd.gg/PreMiD/websites/G/Google%20Docs/assets/3.png',
+}
 
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-      startTimestamp: browsingStamp
-    },
-    privacy = await presence.getSetting("privacy"),
-    newLang = await presence.getSetting("lang");
+    startTimestamp: browsingTimestamp,
+  }
+  const privacy = await presence.getSetting<boolean>('privacy')
 
-  if (!oldLang) {
-    oldLang = newLang;
-  } else if (oldLang !== newLang) {
-    oldLang = newLang;
-    strings = getStrings();
+  const strings = await getStrings()
+
+  title = document.title
+    ?.replace(/(?:- )?Google[\xA0 ]Docs/, '')
+    ?.replace(/(?:- )?Google[\xA0 ]Forms/, '')
+    ?.replace(/(?:- )?Google[\xA0 ]Sheets/, '')
+    ?.replace(/(?:- )?Google[\xA0 ]Slides/, '')
+    ?.trim()
+
+  if (document.location.pathname.includes('/document')) {
+    presenceData.name = 'Google Docs'
+    presenceData.largeImageKey = ActivityAssets.DocsLogo
+    if (document.location.pathname.includes('/edit'))
+      presenceData.details = strings.editingDoc
+    else if (document.location.pathname.includes('/document/u/'))
+      presenceData.details = strings.browsingDoc
+    else presenceData.details = strings.viewingDoc
+  }
+  else if (document.location.pathname.includes('/forms/')) {
+    presenceData.name = 'Google Forms'
+    presenceData.largeImageKey = ActivityAssets.FormsLogo
+    if (document.location.pathname.includes('/edit'))
+      presenceData.details = strings.editingForm
+    else if (document.location.pathname.includes('/forms/u/'))
+      presenceData.details = strings.browsingForm
+    else presenceData.details = strings.viewingForm
+  }
+  else if (document.location.pathname.includes('/spreadsheets')) {
+    presenceData.name = 'Google Sheets'
+    presenceData.largeImageKey = ActivityAssets.SheetsLogo
+    if (document.location.pathname.includes('/edit'))
+      presenceData.details = strings.editingSheet
+    else if (document.location.pathname.includes('/spreadsheets/u/'))
+      presenceData.details = strings.browsingSheet
+    else presenceData.details = strings.viewingSheet
+  }
+  else if (document.location.pathname.includes('/presentation/')) {
+    presenceData.name = 'Google Slides'
+    presenceData.largeImageKey = ActivityAssets.SlidesLogo
+    if (document.location.pathname.includes('/edit'))
+      presenceData.details = strings.editingPresentation
+    else if (document.location.pathname.includes('/presentation/u/'))
+      presenceData.details = strings.browsingPresentation
+    else presenceData.details = strings.vieiwngPresentation
   }
 
-  if (document.location.pathname.includes("/document")) {
-    presenceData.largeImageKey = "docslogo";
-    title = document.title.replace("- Google Docs", "");
-    if (document.location.pathname.includes("/edit")) {
-      presenceData.details = (await strings).editingDoc;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/document/u/")) {
-      presenceData.details = (await strings).browsingDoc;
-    } else {
-      presenceData.details = (await strings).viewingDoc;
-      if (!privacy) presenceData.state = title;
-    }
-  } else if (document.location.pathname.includes("/forms/")) {
-    presenceData.largeImageKey = "formslogo";
-    title = document.title.replace("- Google Forms", "");
-    if (document.location.pathname.includes("/edit")) {
-      presenceData.details = (await strings).editingForm;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/forms/u/")) {
-      presenceData.details = (await strings).browsingForm;
-    } else {
-      presenceData.details = (await strings).viewingForm;
-      if (!privacy) presenceData.state = title;
-    }
-  } else if (document.location.pathname.includes("/spreadsheets")) {
-    presenceData.largeImageKey = "sheetslogo";
-    title = document.title.replace("- Google Sheets", "");
-    if (document.location.pathname.includes("/edit")) {
-      presenceData.details = (await strings).editingSheet;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/spreadsheets/u/")) {
-      presenceData.details = (await strings).browsingSheet;
-    } else {
-      presenceData.details = (await strings).viewingSheet;
-      if (!privacy) presenceData.state = title;
-    }
-  } else if (document.location.pathname.includes("/presentation/")) {
-    presenceData.largeImageKey = "slideslogo";
-    title = document.title.replace("- Google Slides", "");
-    if (document.location.pathname.includes("/edit")) {
-      presenceData.details = (await strings).editingPresentation;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/presentation/u/")) {
-      presenceData.details = (await strings).browsingPresentation;
-    } else {
-      presenceData.details = (await strings).vieiwngPresentation;
-      if (!privacy) presenceData.state = title;
-    }
-  }
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
-});
+  if (!privacy && title !== '')
+    presenceData.state = title
+
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

@@ -1,54 +1,63 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-  clientId: "719757905888542730"
-});
+  clientId: '719757905888542730',
+})
 
-let actionTimestamp: number = null;
+let actionTimestamp: number | null = null
 
-presence.on("UpdateData", async () => {
-  const data: PresenceData = {
-    largeImageKey: "gitbookw"
-  };
+presence.on('UpdateData', async () => {
+  const presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/G/Gitbook/assets/logo.png',
+  }
 
-  if (location.hostname === "app.gitbook.com") {
+  if (location.hostname === 'app.gitbook.com') {
     // In dashboard?
-    if (document.querySelector("[class*=--dashboardBody-")) {
+    if (document.querySelector('[class*=--dashboardBody-')) {
       const dashName = document.querySelector(
-        "[class*=--dashboardMenu-] [class*=--headerText-]"
-      );
-      data.details = dashName
+        '[class*=--dashboardMenu-] [class*=--headerText-]',
+      )
+      presenceData.details = dashName
         ? `In ${dashName.textContent}'s Dashboard`
-        : "In a Dashboard";
-      actionTimestamp = null;
-    } else {
-      data.smallImageKey = "writing";
-      data.smallImageText = "Editing";
-
-      const docName = document.querySelector("[class*='logoText-'] span");
-      const pageName = document.querySelector(
-        "[class*=--navButtonOpened-] span"
-      );
-
-      if (!actionTimestamp) actionTimestamp = Date.now();
-      if (docName) data.details = `Editing ${docName.textContent}`;
-      if (pageName) data.state = `on ${pageName.textContent}`;
-      data.startTimestamp = actionTimestamp;
+        : 'In a Dashboard'
+      actionTimestamp = null
     }
-  } else {
-    data.smallImageKey = "reading";
-    data.smallImageText = "Viewing";
+    else {
+      presenceData.smallImageKey = Assets.Writing
+      presenceData.smallImageText = 'Editing'
 
-    const docName = document.querySelector("[class*='logoText-'] span");
-    const pageName = document.querySelector("[class*=--navButtonOpened-] span");
+      const docName = document.querySelector('[class*=\'logoText-\'] span')
+      const pageName = document.querySelector('[class*=--navButtonOpened-] span')
 
-    if (!actionTimestamp) actionTimestamp = Date.now();
-    if (docName) data.details = `Viewing ${docName.textContent}`;
-    if (pageName) data.state = `on ${pageName.textContent}`;
-    data.startTimestamp = actionTimestamp;
+      actionTimestamp ??= Date.now()
+      if (docName)
+        presenceData.details = `Editing ${docName.textContent}`
+      if (pageName)
+        presenceData.state = `on ${pageName.textContent}`
+      presenceData.startTimestamp = actionTimestamp
+    }
+  }
+  else {
+    presenceData.smallImageKey = Assets.Reading
+    presenceData.smallImageText = 'Viewing'
+
+    const docName = document.querySelector('[class*=\'logoText-\'] span')
+    const pageName = document.querySelector('[class*=--navButtonOpened-] span')
+
+    actionTimestamp ??= Date.now()
+    if (docName)
+      presenceData.details = `Viewing ${docName.textContent}`
+    if (pageName)
+      presenceData.state = `on ${pageName.textContent}`
+    presenceData.startTimestamp = actionTimestamp
   }
 
   // If data doesn't exist clear else set activity to the presence data
-  if (data.details == null) {
-    presence.setTrayTitle(); // Clear tray
-    presence.setActivity(); // Clear activity
-  } else presence.setActivity(data);
-});
+  if (!presenceData.details) {
+    // Clear tray
+    presence.setActivity() // Clear activity
+  }
+  else {
+    presence.setActivity(presenceData)
+  }
+})

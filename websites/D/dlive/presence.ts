@@ -1,58 +1,39 @@
-var presence = new Presence({
-  clientId: "609531561389588480"
-});
+import { Assets } from 'premid'
 
-var lastPlaybackState = null;
-var playback;
-var browsingStamp = Math.floor(Date.now() / 1000);
+const presence = new Presence({
+  clientId: '609531561389588480',
+})
 
-if (lastPlaybackState != playback) {
-  lastPlaybackState = playback;
-  browsingStamp = Math.floor(Date.now() / 1000);
-}
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", async () => {
-  playback =
-    document.querySelector("video.dplayer-video.dplayer-video-current") !== null
-      ? true
-      : false;
+presence.on('UpdateData', async () => {
+  const playback = document.querySelector('video.dplayer-video.dplayer-video-current') !== null
 
   if (!playback) {
     const presenceData: PresenceData = {
-      largeImageKey: "lg"
-    };
+      largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/D/dlive/assets/logo.png',
+    }
 
-    presenceData.details = "Browsing...";
-    presenceData.startTimestamp = browsingStamp;
+    presenceData.details = 'Browsing...'
+    presenceData.startTimestamp = browsingTimestamp
 
-    presence.setActivity(presenceData, true);
+    presence.setActivity(presenceData, true)
   }
 
-  var video: HTMLVideoElement = document.querySelector(
-    "video.dplayer-video.dplayer-video-current"
-  );
-
-  if (video !== null) {
-    var videoTitle: any, streamer: any;
-
-    videoTitle = document.querySelector(
-      ".info-line-left.flex-box .flex-column.flex-justify-center div"
-    );
-    streamer = document.querySelector(
-      "div.channel-header span.dlive-name span.overflow-ellipsis"
-    );
-
+  if (document.querySelector('video.dplayer-video.dplayer-video-current')) {
     const presenceData: PresenceData = {
-      largeImageKey: "lg",
-      smallImageKey: "live"
-    };
+      largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/D/dlive/assets/logo.png',
+      smallImageKey: Assets.Live,
+    }
 
-    presence.setTrayTitle(videoTitle.innerText);
+    presenceData.details = document.querySelector<HTMLElement>(
+      '.info-line-left.flex-box .flex-column.flex-justify-center div',
+    )?.textContent
+    presenceData.state = document.querySelector<HTMLElement>(
+      'div.channel-header span.dlive-name span.overflow-ellipsis',
+    )?.textContent
+    presenceData.startTimestamp = browsingTimestamp
 
-    presenceData.details = videoTitle.innerText;
-    presenceData.state = streamer.innerText;
-    presenceData.startTimestamp = browsingStamp;
-
-    presence.setActivity(presenceData, true);
+    presence.setActivity(presenceData, true)
   }
-});
+})

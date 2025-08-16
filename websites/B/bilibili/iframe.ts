@@ -1,21 +1,13 @@
-var iframe = new iFrame();
-iframe.on("UpdateData", async () => {
-  if (document.querySelector(".bilibili-player-video video") !== null) {
-    var video: HTMLVideoElement = document.querySelector(
-      ".bilibili-player-video video"
-    );
+const iframe = new iFrame()
 
-    if (video != undefined && !isNaN(video.duration)) {
-      var test = video.paused;
-      iframe.send({
-        iframe_video: {
-          iFrameVideo: true,
-          test: test,
-          currTime: video.currentTime,
-          dur: video.duration,
-          pause: test
-        }
-      });
-    }
+iframe.on('UpdateData', async () => {
+  const title = document.querySelector('.smaller-title')?.getAttribute('title') ?? document.querySelector('.small-title')?.getAttribute('title')
+  const roomOwner = document.querySelector('.room-owner-username')?.getAttribute('title')
+  if (title === undefined || roomOwner === undefined) {
+    return
   }
-});
+  iframe.send({
+    details: title,
+    state: roomOwner,
+  })
+})

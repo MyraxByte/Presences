@@ -1,29 +1,29 @@
-var presence = new Presence({
-  clientId: "704385469856612523"
-});
+const presence = new Presence({
+  clientId: '503557087041683458',
+})
 
-let cpuUsage: any, contributingProject: any;
+let points: string, progress: string
+presence.on('iFrameData', (data: unknown) => {
+  ({ points, progress } = (data as IFrameData).info)
+})
 
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-    largeImageKey: "logo"
-  };
-  if (document.location.hostname == "client.foldingathome.org") {
-    cpuUsage = document.querySelector(
-      "div.ui-progressbar-value.ui-widget-header.ui-corner-left"
-    );
-    contributingProject = document.querySelector("a.sbSelector");
-
-    presenceData.details = "Contributing to: " + contributingProject.innerText;
-    presenceData.state = "Project Progress: " + cpuUsage.innerText;
-  } else {
-    presenceData.details = "Can't read page";
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/F/Folding%40home/assets/logo.png',
+    name: 'Folding@home',
   }
 
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
+  presenceData.details = `Contributing to: ${points}`
+  presenceData.state = `Project Progress: ${progress}`
+
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})
+
+interface IFrameData {
+  info: {
+    points: string
+    progress: string
   }
-});
+}

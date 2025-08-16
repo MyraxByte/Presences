@@ -1,151 +1,147 @@
-interface LangStrings {
-  play: string;
-  pause: string;
-  watch: string;
-  search: string;
-  searching: string;
-  profile: string;
-  article: string;
-  reading: string;
-  lyrics: string;
-  viewLyrics: string;
-  home: string;
-  viewAlbum: string;
-  buttonAlbum: string;
-}
+import { Assets } from 'premid'
 
 const presence = new Presence({
-    clientId: "809133308604055622"
-  }),
-  browsingStamp = Math.floor(Date.now() / 1000),
-  getStrings = async (): Promise<LangStrings> => {
-    return presence.getStrings(
-      {
-        play: "general.playing",
-        pause: "general.paused",
-        watch: "general.watching",
-        search: "general.searchFor",
-        searching: "general.search",
-        profile: "general.viewProfile",
-        article: "general.readingArticle",
-        reading: "general.reading",
-        lyrics: "genius.lyrics",
-        viewLyrics: "genius.viewLyrics",
-        home: "genius.viewHome",
-        viewAlbum: "genius.viewAlbum",
-        buttonAlbum: "general.buttonViewAlbum"
-      },
-      await presence.getSetting("lang")
-    );
-  };
+  clientId: '809133308604055622',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-let strings: Promise<LangStrings> = getStrings(),
-  oldLang: string = null;
+async function getStrings() {
+  return presence.getStrings(
+    {
+      play: 'general.playing',
+      pause: 'general.paused',
+      watch: 'general.watching',
+      search: 'general.searchFor',
+      searching: 'general.search',
+      profile: 'general.viewProfile',
+      article: 'general.readingArticle',
+      reading: 'general.reading',
+      lyrics: 'genius.lyrics',
+      viewLyrics: 'genius.viewLyrics',
+      home: 'genius.viewHome',
+      viewAlbum: 'genius.viewAlbum',
+      buttonAlbum: 'general.buttonViewAlbum',
+    },
 
-presence.on("UpdateData", async () => {
-  const newLang = await presence.getSetting("lang"),
-    buttons = await presence.getSetting("buttons");
+  )
+}
 
-  if (!oldLang) {
-    oldLang = newLang;
-  } else if (oldLang !== newLang) {
-    oldLang = newLang;
-    strings = getStrings();
+let strings: Awaited<ReturnType<typeof getStrings>>
+let oldLang: string | null = null
+
+presence.on('UpdateData', async () => {
+  const newLang = await presence.getSetting<string>('lang').catch(() => 'en')
+  const buttons = await presence.getSetting<boolean>('buttons')
+
+  if (oldLang !== newLang || !strings) {
+    oldLang = newLang
+    strings = await getStrings()
   }
 
   const presenceData: PresenceData = {
-      largeImageKey: "genius",
-      startTimestamp: browsingStamp
-    },
-    path = document.location.pathname;
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/G/Genius/assets/logo.png',
+    startTimestamp: browsingTimestamp,
+  }
+  const path = document.location.pathname
 
-  if (path === "/") {
-    presenceData.details = (await strings).home;
-  } else if (path.startsWith("/a/")) {
-    let article = document.querySelector("h1.article_title").textContent;
-    if (article.length > 128) {
-      article = article.substring(0, 125) + "...";
-    }
-    presenceData.details = (await strings).article;
-    presenceData.state = article;
-    presenceData.smallImageKey = "reading";
-    presenceData.smallImageText = (await strings).reading;
-  } else if (path.startsWith("/artists/")) {
-    presenceData.details = (await strings).profile;
-    presenceData.state = document
-      .querySelector("h1.profile_identity-name_iq_and_role_icon")
-      .innerHTML.split("<")[0];
-  } else if (path.startsWith("/albums/")) {
-    presenceData.details = (await strings).viewAlbum;
+  if (path === '/') {
+    presenceData.details = strings.home
+  }
+  else if (path.startsWith('/a/')) {
+    let article = document.querySelector('h1.article_title')?.textContent
+    if (article && article.length > 128)
+      article = `${article.substring(0, 125)}...`
+
+    presenceData.details = strings.article
+    presenceData.state = article
+    presenceData.smallImageKey = Assets.Reading
+    presenceData.smallImageText = strings.reading
+  }
+  else if (path.startsWith('/artists/')) {
+    presenceData.details = strings.profile;
+    [presenceData.state] = document
+      .querySelector('h1.profile_identity-name_iq_and_role_icon')
+      ?.textContent
+      ?.split('<') ?? []
+  }
+  else if (path.startsWith('/albums/')) {
+    presenceData.details = strings.viewAlbum
     presenceData.state = document.querySelector(
-      "h1.header_with_cover_art-primary_info-title"
-    ).textContent;
-    if (buttons)
+      'h1.header_with_cover_art-primary_info-title',
+    )?.textContent
+    if (buttons) {
       presenceData.buttons = [
         {
-          label: (await strings).buttonAlbum,
-          url: document.URL
-        }
-      ];
-  } else if (document.querySelector(".song_body-lyrics") !== null) {
-    const song = document
-        .querySelector("h1.header_with_cover_art-primary_info-title")
-        .textContent.trim(),
-      artist = document
-        .querySelector("a.header_with_cover_art-primary_info-primary_artist")
-        .textContent.trim();
-    presenceData.details = (await strings).lyrics;
-    presenceData.state = artist + " - " + song;
-    if (buttons)
-      presenceData.buttons = [
-        {
-          label: (await strings).viewLyrics,
-          url: document.URL
-        }
-      ];
-  } else if (
-    document.querySelector(".profile_identity-name_iq_and_role_icon") !== null
-  ) {
-    presenceData.details = (await strings).profile;
-    presenceData.state = document
-      .querySelector("h1.profile_identity-name_iq_and_role_icon")
-      .innerHTML.split("<")[0];
-  } else if (path.startsWith("/videos/")) {
-    const video: HTMLVideoElement = document.querySelector("video.vjs-tech");
-    let title = document.querySelector("h1.article_title").textContent;
-    if (title.length > 128) {
-      title = title.substring(0, 125) + "...";
+          label: strings.buttonAlbum,
+          url: document.URL,
+        },
+      ]
     }
-    presenceData.details = (await strings).watch;
-    presenceData.state = title;
-    if (video && !isNaN(video.duration)) {
-      const timestamps = presence.getTimestampsfromMedia(video);
+  }
+  else if (
+    document.querySelector('div[class*=\'SongPageGrid\']') !== null
+    || document.querySelector('.song_body-lyrics') !== null
+  ) {
+    const artist = await presence.getPageVariable('_sf_async_config.authors')
+    presenceData.details = strings.lyrics
+    presenceData.state = `${artist['_sf_async_config.authors']} - ${
+      document
+        .querySelector('h1[class*="SongHeader-desktop"]')
+        ?.textContent
+        ?.trim()
+        || document
+          .querySelector('h1[class*="SongHeader-mobile"]')
+          ?.textContent
+          ?.trim()
+    }`
+    if (buttons) {
+      presenceData.buttons = [
+        {
+          label: strings.viewLyrics,
+          url: document.URL,
+        },
+      ]
+    }
+  }
+  else if (
+    document.querySelector('.profile_identity-name_iq_and_role_icon') !== null
+  ) {
+    presenceData.details = strings.profile;
+    [presenceData.state] = document
+      .querySelector('h1.profile_identity-name_iq_and_role_icon')
+      ?.textContent
+      ?.split('<') ?? []
+  }
+  else if (path.startsWith('/videos/')) {
+    const video = document.querySelector<HTMLVideoElement>('video.vjs-tech')
+    let title = document.querySelector('h1.article_title')?.textContent
+    if (title && title.length > 128)
+      title = `${title.substring(0, 125)}...`
 
-      presenceData.smallImageKey = video.paused ? "pause" : "play";
-      presenceData.smallImageText = video.paused
-        ? (await strings).pause
-        : (await strings).play;
-      presenceData.startTimestamp = timestamps[0];
-      presenceData.endTimestamp = timestamps[1];
+    presenceData.details = strings.watch
+    presenceData.state = title
+    if (video && !Number.isNaN(video.duration)) {
+      [presenceData.startTimestamp, presenceData.endTimestamp] = presence.getTimestampsfromMedia(video)
+
+      presenceData.smallImageKey = video.paused ? Assets.Pause : Assets.Play
+      presenceData.smallImageText = video.paused ? strings.pause : strings.play
 
       if (video.paused) {
-        delete presenceData.startTimestamp;
-        delete presenceData.endTimestamp;
+        delete presenceData.startTimestamp
+        delete presenceData.endTimestamp
       }
     }
-  } else if (path.startsWith("/search")) {
-    presenceData.details = (await strings).search;
+  }
+  else if (path.startsWith('/search')) {
+    presenceData.details = strings.search
     presenceData.state = document.querySelector(
-      "h2.search_results_page-header"
-    ).textContent;
-    presenceData.smallImageKey = "search";
-    presenceData.smallImageText = (await strings).searching;
+      'h2.search_results_page-header',
+    )?.textContent
+    presenceData.smallImageKey = Assets.Search
+    presenceData.smallImageText = strings.searching
   }
 
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
-});
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})

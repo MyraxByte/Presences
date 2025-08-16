@@ -1,116 +1,112 @@
-const presence = new Presence({
-    clientId: "735588731637203080"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    browse: "presence.activity.browsing"
-  }),
-  getElement = (query: string): string | undefined => {
-    return document.querySelector(query)?.textContent;
-  };
+import { Assets } from 'premid'
 
-let elapsed = Math.floor(Date.now() / 1000),
-  prevUrl = document.location.href;
+const presence = new Presence({
+  clientId: '735588731637203080',
+})
+const strings = presence.getStrings({
+  play: 'general.playing',
+  pause: 'general.paused',
+  browse: 'general.browsing',
+})
+function getElement(query: string): string | undefined {
+  return document.querySelector(query)?.textContent ?? undefined
+}
+
+let elapsed = Math.floor(Date.now() / 1000)
+let prevUrl = document.location.href
 
 const statics = {
-  "/": {
-    details: "Browsing...",
-    state: "Home"
+  '/': {
+    details: 'Browsing...',
+    state: 'Home',
   },
-  "/myshazam/": {
-    details: "Viewing Page...",
-    state: "My Shazam"
+  '/myshazam/': {
+    details: 'Viewing Page...',
+    state: 'My Shazam',
   },
-  "/apps/": {
-    details: "Viewing Page...",
-    state: "Mobile App"
+  '/apps/': {
+    details: 'Viewing Page...',
+    state: 'Mobile App',
   },
-  "/company/": {
-    details: "Viewing Page...",
-    state: "About Shazam"
+  '/company/': {
+    details: 'Viewing Page...',
+    state: 'About Shazam',
   },
-  "/terms/": {
-    details: "Viewing Page...",
-    state: "Terms of Service"
+  '/terms/': {
+    details: 'Viewing Page...',
+    state: 'Terms of Service',
   },
-  "/privacy/": {
-    details: "Viewing Page...",
-    state: "Privacy Policy"
-  }
-};
+  '/privacy/': {
+    details: 'Viewing Page...',
+    state: 'Privacy Policy',
+  },
+}
 
-presence.on("UpdateData", async () => {
-  const path = location.pathname.replace(/\/?$/, "/"),
-    showSong = await presence.getSetting("song"),
-    showTimestamps = await presence.getSetting("timestamp"),
-    song: HTMLVideoElement = document.querySelector("#audioctrl"),
-    songPlaying = song ? !song.paused : false;
+presence.on('UpdateData', async () => {
+  const path = location.pathname.replace(/\/?$/, '/')
+  const showSong = await presence.getSetting<boolean>('song')
+  const showTimestamps = await presence.getSetting<boolean>('timestamp')
+  const song = document.querySelector<HTMLVideoElement>('#audioctrl')
+  const songPlaying = song ? !song.paused : false
 
-  let data: PresenceData = {
-    details: undefined,
-    state: undefined,
-    largeImageKey: "shazam",
-    smallImageKey: undefined,
-    smallImageText: undefined,
+  let presenceData: PresenceData = {
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/S/Shazam/assets/logo.png',
     startTimestamp: elapsed,
-    endTimestamp: undefined
-  };
+  }
 
   if (document.location.href !== prevUrl) {
-    prevUrl = document.location.href;
-    elapsed = Math.floor(Date.now() / 1000);
+    prevUrl = document.location.href
+    elapsed = Math.floor(Date.now() / 1000)
   }
 
   for (const [k, v] of Object.entries(statics)) {
-    if (path.match(k)) {
-      data = { ...data, ...v };
-    }
+    if (path.match(k))
+      presenceData = { ...presenceData, ...v }
   }
 
-  if (showSong && songPlaying) {
-    data.details = getElement(".track .heading");
-    data.state = getElement(".track .subheading");
-    data.smallImageKey = "play";
-    data.smallImageText = (await strings).play;
+  if (showSong && songPlaying && song) {
+    presenceData.details = getElement('.track .heading')
+    presenceData.state = getElement('.track .subheading')
+    presenceData.smallImageKey = Assets.Play
+    presenceData.smallImageText = (await strings).play;
 
-    const timestamps = presence.getTimestamps(song.currentTime, song.duration);
-    data.startTimestamp = timestamps[0];
-    data.endTimestamp = timestamps[1];
+    [presenceData.startTimestamp, presenceData.endTimestamp] = presence.getTimestampsfromMedia(song)
   }
 
   if (!songPlaying) {
-    if (path.includes("/charts/")) {
-      data.details = "Viewing Charts...";
-      data.state = getElement(".quicklinks-content > li:not(.show-link)");
+    if (path.includes('/charts/')) {
+      presenceData.details = 'Viewing Charts...'
+      presenceData.state = getElement(
+        '.quicklinks-content > li:not(.show-link)',
+      )
     }
 
-    if (path.includes("/track/")) {
-      data.details = "Viewing Track...";
-      data.state = `${getElement(".details h1")} by ${getElement(
-        ".details h2"
-      )}`;
+    if (path.includes('/track/')) {
+      presenceData.details = 'Viewing Track...'
+      presenceData.state = `${getElement('.details h1')} by ${getElement(
+        '.details h2',
+      )}`
     }
 
-    if (path.includes("/artist/")) {
-      data.details = "Viewing Artist...";
-      data.state = getElement(".details h1");
+    if (path.includes('/artist/')) {
+      presenceData.details = 'Viewing Artist...'
+      presenceData.state = getElement('.details h1')
     }
   }
 
-  if (data.details) {
-    if (data.details.match("(Browsing|Viewing)")) {
-      data.smallImageKey = "reading";
-      data.smallImageText = (await strings).browse;
+  if (presenceData.details) {
+    if ((presenceData.details as string).match('(Browsing|Viewing)')) {
+      presenceData.smallImageKey = Assets.Reading
+      presenceData.smallImageText = (await strings).browse
     }
     if (!showTimestamps) {
-      delete data.startTimestamp;
-      delete data.endTimestamp;
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
     }
 
-    presence.setActivity(data);
-  } else {
-    presence.setActivity();
-    presence.setTrayTitle();
+    presence.setActivity(presenceData)
   }
-});
+  else {
+    presence.setActivity()
+  }
+})

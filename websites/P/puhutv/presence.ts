@@ -1,100 +1,90 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "628341182581440531"
-  }),
-  strings: any = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused"
-  });
+  clientId: '628341182581440531',
+})
+const strings = presence.getStrings({
+  play: 'general.playing',
+  pause: 'general.paused',
+})
 
-/**
- * Get Timestamps
- * @param {Number} videoTime Current video time seconds
- * @param {Number} videoDuration Video duration seconds
- */
-function getTimestamps(
-  videoTime: number,
-  videoDuration: number
-): Array<number> {
-  var startTime = Date.now();
-  var endTime = Math.floor(startTime / 1000) - videoTime + videoDuration;
-  return [Math.floor(startTime / 1000), endTime];
-}
-
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const category = document.querySelector(
-    "#widget_serie_contents_3 > section > div > div > div.category-main-content-right > header > h1 > strong"
-  ) as HTMLElement;
+    '#widget_serie_contents_3 > section > div > div > div.category-main-content-right > header > h1 > strong',
+  ) as HTMLElement
 
   if (
-    document.location.pathname == "/" ||
-    !document.location.pathname ||
-    (category && category.innerHTML != "")
+    document.location.pathname === '/'
+    || !document.location.pathname
+    || (category && category.textContent !== '')
   ) {
     presence.setActivity({
-      largeImageKey: "puhu-logo",
+      largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/P/puhutv/assets/logo.png',
       startTimestamp: Math.floor(Date.now() / 1000),
-      details: "Geziniyor...",
-      state: category && category.innerHTML ? category.innerHTML : "Ana Sayfa"
-    });
-  } else {
-    const video = document.querySelector(
-      "#dyg_player_dogusPlayer_html5_api"
-    ) as HTMLVideoElement;
+      details: 'Geziniyor...',
+      state: category && category.textContent ? category.textContent : 'Ana Sayfa',
+    })
+  }
+  else {
+    const video = document.querySelector<HTMLVideoElement>(
+      '#dyg_player_dogusPlayer_html5_api',
+    )
 
-    if (!video) return;
-    else {
+    if (video) {
       const title = document.querySelector(
-          "#widget_video_detail_3 > section.hero.hero--video-detay.hero--subpages > header > div > div.video-detay-header-content > h1 > a"
-        ),
-        episode =
-          title &&
-          document.querySelector(
-            "#widget_video_detail_3 > section.hero.hero--video-detay.hero--subpages > header > div > div.video-detay-header-content > h1"
+        '#widget_video_detail_3 > section.hero.hero--video-detay.hero--subpages > header > div > div.video-detay-header-content > h1 > a',
+      )
+      const episode = title
+        && document.querySelector(
+          '#widget_video_detail_3 > section.hero.hero--video-detay.hero--subpages > header > div > div.video-detay-header-content > h1',
+        )
+        ? document
+          .querySelector(
+            '#widget_video_detail_3 > section.hero.hero--video-detay.hero--subpages > header > div > div.video-detay-header-content > h1',
           )
-            ? document
-                .querySelector(
-                  "#widget_video_detail_3 > section.hero.hero--video-detay.hero--subpages > header > div > div.video-detay-header-content > h1"
-                )
-                .innerHTML.replace(title.outerHTML + " ", "")
-            : null,
-        timestamps = getTimestamps(
-          Math.floor(video.currentTime),
-          Math.floor(video.duration)
-        );
+          ?.textContent
+          ?.replace(`${title.outerHTML} `, '')
+        : null
+      const timestamps = presence.getTimestamps(
+        Math.floor(video.currentTime),
+        Math.floor(video.duration),
+      )
 
-      if (!title || title.innerHTML == "") return;
+      if (!title || title.textContent === '')
+        return
 
-      const data: { [k: string]: any } = {
-        largeImageKey: "puhu-logo",
-        details: title.innerHTML,
-        state:
-          episode != ""
-            ? episode
-            : `${
-                document.querySelector(
-                  "#widget_serie_detail_tab_5 > section > div > div > div > div.kunye-content-left > div:nth-child(3)"
+      const presenceData: PresenceData = {
+        largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/P/puhutv/assets/logo.png',
+        details: title.textContent,
+        state: episode !== ''
+          ? episode
+          : `${
+            document.querySelector(
+              '#widget_serie_detail_tab_5 > section > div > div > div > div.kunye-content-left > div:nth-child(3)',
+            )
+              ? document
+                .querySelector<HTMLElement>(
+                  '#widget_serie_detail_tab_5 > section > div > div > div > div.kunye-content-left > div:nth-child(3)',
                 )
-                  ? (document.querySelector(
-                      "#widget_serie_detail_tab_5 > section > div > div > div > div.kunye-content-left > div:nth-child(3)"
-                    ) as any).innerText.replace("\n", ": ")
-                  : null
-              }`,
-        smallImageKey: video.paused ? "paused" : "playing",
+                ?.textContent
+                ?.replace(/\n/g, ': ')
+              : null
+          }`,
+        smallImageKey: video.paused ? Assets.Pause : Assets.Play,
         smallImageText: video.paused
           ? (await strings).pause
-          : (await strings).play
-      };
-
-      if (!isNaN(timestamps[0]) && !isNaN(timestamps[1])) {
-        data.startTimestamp = timestamps[0];
-        data.endTimestamp = timestamps[1];
+          : (await strings).play,
       }
+
+      if (!Number.isNaN(timestamps[0]) && !Number.isNaN(timestamps[1]))
+        [presenceData.startTimestamp, presenceData.endTimestamp] = timestamps
+
       if (video.paused) {
-        delete data.startTimestamp;
-        delete data.endTimestamp;
+        delete presenceData.startTimestamp
+        delete presenceData.endTimestamp
       }
 
-      presence.setActivity(data);
+      presence.setActivity(presenceData)
     }
   }
-});
+})

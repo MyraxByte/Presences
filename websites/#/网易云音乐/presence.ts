@@ -1,82 +1,59 @@
-const presence = new Presence({ clientId: "714636053235105832" });
+import { Assets } from 'premid'
 
+const presence = new Presence({ clientId: '1035124482735607838' })
 const strings = presence.getStrings({
-  play: "presence.playback.playing",
-  pause: "presence.playback.paused"
-});
+  play: 'general.playing',
+  pause: 'general.paused',
+  listen: 'general.buttonListenAlong',
+})
 
-function getTime(list: string[]): number {
-  let ret = 0;
-  for (let index = list.length - 1; index >= 0; index--) {
-    ret += parseInt(list[index]) * 60 ** index;
-  }
-  return ret;
+enum ActivityAssets {
+  Logo = 'https://cdn.rcd.gg/PreMiD/websites/%23/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90/assets/logo.png',
 }
 
-function getTimestamps(
-  audioTime: string,
-  audioDuration: string
-): Array<number> {
-  const splitAudioTime = audioTime.split(":").reverse(),
-    splitAudioDuration = audioDuration.split(":").reverse(),
-    parsedAudioTime = getTime(splitAudioTime),
-    parsedAudioDuration = getTime(splitAudioDuration),
-    startTime = Date.now(),
-    endTime =
-      Math.floor(startTime / 1000) - parsedAudioTime + parsedAudioDuration;
-  return [Math.floor(startTime / 1000), endTime];
-}
+presence.on('UpdateData', async () => {
+  if (document.querySelector('#g_player')) {
+    const playerButton = document.querySelector(
+      '#g_player > div.btns > a.ply.j-flag',
+    )
+    const paused = playerButton?.classList.contains('pas') === false
+    const audioTimeLeft = document.querySelector(
+      '#g_player > div.play > div.m-pbar > span',
+    )!.textContent
+    const title = document.querySelector(
+      '#g_player > div.play > div.j-flag.words > a',
+    )?.textContent
+    const songPath = document.querySelector('#g_player > div.play > div.j-flag.words > a')?.getAttribute('href')
+    const author = document.querySelector('#g_player > div.play > div.j-flag.words > span > span')?.textContent
+    const audioTime = presence.timestampFromFormat(document.querySelector('#g_player > div.play > div.m-pbar > span > em')!.textContent!)
+    const audioDuration = presence.timestampFromFormat(audioTimeLeft!.replace(/(.*)(?=\/)/, '').replace('/ ', ''))
 
-let title: string,
-  author: string,
-  audioTime: string,
-  audioDuration: string,
-  audioTimeLeft: string,
-  player_button: HTMLButtonElement;
-
-presence.on("UpdateData", async () => {
-  const player = document.querySelector("#g_player");
-
-  if (player) {
-    player_button = document.querySelector(
-      "#g_player > div.btns > a.ply.j-flag"
-    );
-    const paused = player_button.classList.contains("pas") === false;
-    audioTimeLeft = document.querySelector(
-      "#g_player > div.play > div.m-pbar > span"
-    ).textContent;
-    title = document.querySelector(
-      "#g_player > div.play > div.j-flag.words > a"
-    ).textContent;
-    author = document.querySelector(
-      "#g_player > div.play > div.j-flag.words > span > span"
-    ).textContent;
-    audioTime = document.querySelector(
-      "#g_player > div.play > div.m-pbar > span > em"
-    ).textContent;
-    audioDuration = audioTimeLeft.replace(/(.*)(?=\/)/, "").replace("/ ", "");
-
-    const timestamps = getTimestamps(audioTime, audioDuration);
-
-    const data: PresenceData = {
+    const [startTimestamp, endTimestamp] = presence.getTimestamps(audioTime, audioDuration)
+    const presenceData: PresenceData = {
       details: title,
       state: author,
-      largeImageKey: "logo",
-      smallImageKey: paused ? "pause" : "play",
+      largeImageKey: ActivityAssets.Logo,
+      smallImageKey: paused ? Assets.Pause : Assets.Play,
       smallImageText: paused ? (await strings).pause : (await strings).play,
-      startTimestamp: timestamps[0],
-      endTimestamp: timestamps[1]
-    };
+      startTimestamp,
+      endTimestamp,
+      buttons: [
+        {
+          label: (await strings).listen,
+          url: `https://music.163.com/#${songPath}`,
+        },
+      ],
+    }
 
     if (paused) {
-      delete data.startTimestamp;
-      delete data.endTimestamp;
+      delete presenceData.startTimestamp
+      delete presenceData.endTimestamp
     }
 
-    if (title !== null && author !== null) {
-      presence.setActivity(data, !paused);
-    }
-  } else {
-    presence.clearActivity();
+    if (title && author)
+      presence.setActivity(presenceData, !paused)
   }
-});
+  else {
+    presence.clearActivity()
+  }
+})

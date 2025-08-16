@@ -1,75 +1,71 @@
+import { Assets } from 'premid'
+
 const presence = new Presence({
-    clientId: "610102236374368267"
-  }),
-  strings = presence.getStrings({
-    play: "presence.playback.playing",
-    pause: "presence.playback.paused",
-    live: "presence.activity.live"
-  });
+  clientId: '610102236374368267',
+})
+const strings = presence.getStrings({
+  play: 'general.playing',
+  pause: 'general.paused',
+  live: 'general.live',
+})
 
-let live, prevLive, author: string, title: string;
+let author: string | null | undefined,
+  title: string | null | undefined,
+  url: string | null | undefined,
+  openUrlText: string | null | undefined
 
-presence.on("UpdateData", async () => {
-  const player = document.querySelector(
-    ".PlayerControls__PlayerContainer-vo7mt3-4"
-  );
+presence.on('UpdateData', async () => {
+  if (document.querySelector('[class^=\'PlayerControls__PlayerContainer\']')) {
+    const normalIsPlaying: boolean = document
+      .querySelector('div[class^=\'PlayButton__PlayerControl\']')
+      ?.getAttribute('aria-label') === 'Pause'
+    const liveIsPlaying: boolean = document
+      .querySelector(
+        '[class^=LiveVideo__VideoContainer] .shaka-play-button',
+      )
+      ?.getAttribute('icon') === 'pause'
+    const isPlaying = normalIsPlaying || liveIsPlaying
 
-  if (player) {
-    const paused =
-        document.querySelector(".PlayButton__PlayerControl-rvh8d9-1") === null,
-      on_air = document.querySelector(
-        ".LiveStreamPage__LiveStreamPageHeader-hwzri8-1"
-      );
+    if (normalIsPlaying) {
+      const normalDetails = document.querySelector(
+        '[class^=\'shared__ShowDetails\'] > a:nth-child(1)',
+      )
 
-    if (on_air) {
-      live = true;
-      if (prevLive !== live) {
-        prevLive = live;
-      }
-    } else {
-      live = false;
-    }
-
-    if (!live) {
-      title = document.querySelector(
-        ".shared__ShowDetails-gqlx6k-1 > a:nth-child(1)"
-      ).textContent;
+      title = normalDetails?.textContent
+      url = new URL(normalDetails?.getAttribute('href') ?? '', window.location.origin)
+        .href
+      openUrlText = 'Listen to Show'
       author = document.querySelector(
-        "p.Typography__BodyExtraSmall-sc-1swbs0s-16:nth-child(2) > a:nth-child(1)"
-      ).textContent;
-    } else {
-      title = document.querySelector(".Typography__Headline1Small-sc-1swbs0s-8")
-        .textContent;
-      author = "Mixcloud Live";
+        '[class^=\'PlayerControls__ShowOwnerName\']',
+      )?.textContent
+    }
+    else if (liveIsPlaying) {
+      url = window.location.href
+      openUrlText = 'View Livestream'
+      title = document.querySelector(
+        '[class^=\'LiveStreamDetails__StreamTitleContainer\'] > h4',
+      )?.textContent
+      author = document.querySelector(
+        '[class^=\'LiveStreamStreamerDetails__StreamerDetailsTextContainer\'] h4',
+      )?.textContent
     }
 
-    const data: PresenceData = {
+    const presenceData: PresenceData = {
       details: title,
       state: author,
-      largeImageKey: "mixcloud",
-      smallImageKey: paused ? "pause" : "play",
-      smallImageText: paused ? (await strings).pause : (await strings).play
-    };
-
-    if (live) {
-      data.smallImageKey = "live";
-      data.smallImageText = (await strings).live;
+      largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/M/Mixcloud/assets/logo.png',
+      smallImageKey: isPlaying ? Assets.Play : Assets.Pause,
+      smallImageText: isPlaying ? (await strings).play : (await strings).pause,
+      buttons: [{ label: openUrlText ?? '', url: url ?? '' }],
     }
 
-    if (paused) {
-      delete data.startTimestamp;
-      delete data.endTimestamp;
+    if (liveIsPlaying) {
+      presenceData.smallImageKey = Assets.Live
+      presenceData.smallImageText = (await strings).live
     }
 
-    presence.setActivity(
-      {
-        details: data.details,
-        state: data.state,
-        largeImageKey: "mixcloud"
-      },
-      true
-    );
-  } else if (title !== null && author !== null) {
-    presence.setActivity(data, !paused);
+    if (isPlaying)
+      presence.setActivity(presenceData)
+    else presence.setActivity()
   }
-});
+})

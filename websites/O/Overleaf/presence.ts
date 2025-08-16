@@ -1,80 +1,64 @@
 const presence = new Presence({
-    clientId: "784954155747377162"
-  }),
-  elapsed = Math.floor(Date.now() / 1000);
+  clientId: '784954155747377162',
+})
+const browsingTimestamp = Math.floor(Date.now() / 1000)
 
-presence.on("UpdateData", async () => {
+presence.on('UpdateData', async () => {
   const presenceData: PresenceData = {
-      largeImageKey: "latex",
-      smallImageKey: "whitelogo",
-      smallImageText: "Overleaf"
-    },
-    pth = window.location.pathname.toLowerCase();
-
-  //Projects page (hub)
-  if (pth === "/project" || pth === "/project/") {
-    presenceData.details = "Browsing Projects";
-    //Selecting lateral menu
-    const menu = document.getElementsByClassName("project-list-sidebar"),
-      //Selcting active section
-      actif = menu[0].getElementsByClassName("active"),
-      //Take care of custom folders
-      maybecustom = actif[0].getElementsByClassName("name ng-binding");
-    if (maybecustom.length != 0) {
-      presenceData.state = maybecustom[0].textContent;
-    }
-    //Take care of (i) logo
-    else {
-      const fnl = actif[0].getElementsByTagName("a");
-      presenceData.state = fnl[0].textContent;
-    }
-    presenceData.startTimestamp = elapsed;
+    largeImageKey: 'https://cdn.rcd.gg/PreMiD/websites/O/Overleaf/assets/logo.png',
+    smallImageKey: 'https://cdn.rcd.gg/PreMiD/websites/O/Overleaf/assets/0.png',
+    smallImageText: 'Overleaf',
+    startTimestamp: browsingTimestamp,
   }
+  const pth = window.location.pathname.toLowerCase()
 
-  //Project page
-  else if (pth.includes("/project")) {
+  // Projects page (hub)
+  if (pth === '/project' || pth === '/project/') {
+    presenceData.details = 'Browsing Projects'
+    const actif = document
+      .querySelectorAll('.project-list-sidebar')[0]
+      ?.querySelectorAll('.active')
+    const maybecustom = actif?.[0]?.querySelectorAll('.name.ng-binding')
+    if (maybecustom?.length !== 0)
+      presenceData.state = maybecustom?.[0]?.textContent
+    // Take care of (i) logo
+    else presenceData.state = actif?.[0]?.querySelectorAll('a')[0]?.textContent
+  }
+  else if (pth.includes('/project')) {
+    // Project page
     presenceData.details = document.title.replace(
-      "- Online LaTeX Editor Overleaf",
-      ""
-    );
-    //Isolating lateral menu
-    const menu = document.getElementsByClassName("file-tree-list"),
-      //Selecting selected element
-      actif = menu[0].getElementsByClassName("selected"),
-      //Selecting current file name
-      filename = actif[0].getElementsByTagName("span")[0].textContent;
-    presenceData.state = filename;
-    presenceData.startTimestamp = elapsed;
+      '- Online LaTeX Editor Overleaf',
+      '',
+    )
+    presenceData.state = document
+      .querySelectorAll('.file-tree-list')[0]
+      ?.querySelectorAll('.selected')[0]
+      ?.querySelectorAll('span')[0]
+      ?.textContent
   }
-
-  //Documentation
-  else if (pth.includes("/learn")) {
-    presenceData.details = "Browsing Documentation";
-    if (pth === "/learn" || pth === "/learn/") {
-      presenceData.state = "Main Page";
-    } else {
-      presenceData.state = document.title.replace(
-        "- Overleaf, Online LaTeX Editor",
-        ""
-      );
+  else if (pth.includes('/learn')) {
+    // Documentation
+    presenceData.details = 'Browsing Documentation'
+    if (pth === '/learn' || pth === '/learn/') {
+      presenceData.state = 'Main Page'
     }
-    presenceData.startTimestamp = elapsed;
+    else {
+      presenceData.state = document.title.replace(
+        '- Overleaf, Online LaTeX Editor',
+        '',
+      )
+    }
   }
-
-  //Random other pages
   else {
-    presenceData.details = "Browsing:";
+    // Random other pages
+    presenceData.details = 'Browsing:'
     presenceData.state = document.title.replace(
-      "- Overleaf, Online LaTeX Editor",
-      ""
-    );
-    presenceData.startTimestamp = elapsed;
+      '- Overleaf, Online LaTeX Editor',
+      '',
+    )
   }
 
-  if (presenceData.details == null) {
-    presence.setTrayTitle();
-    presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
-});
+  if (presenceData.details)
+    presence.setActivity(presenceData)
+  else presence.setActivity()
+})
